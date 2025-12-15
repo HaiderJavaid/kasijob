@@ -1,5 +1,6 @@
-export const dynamic = "force-dynamic"; // <--- ADD THIS LINE AT THE TOP
 "use client";
+
+export const dynamic = "force-dynamic"; // <--- ADD THIS LINE AT THE TOP
 
 import { useState, useEffect } from "react"; // <--- Hook for state
 import { Play, FileText, Share2, Gift, Zap, ChevronRight } from "lucide-react";

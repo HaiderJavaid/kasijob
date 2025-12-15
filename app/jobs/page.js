@@ -1,5 +1,7 @@
-export const dynamic = "force-dynamic"; // <--- ADD THIS LINE AT THE TOP
 "use client"; 
+
+
+export const dynamic = "force-dynamic"; // <--- ADD THIS LINE AT THE TOP
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
