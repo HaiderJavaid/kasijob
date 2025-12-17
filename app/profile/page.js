@@ -4,12 +4,31 @@ import { useRouter } from "next/navigation";
 import { auth, db } from "../../lib/firebase"; 
 import { doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { LogOut, Wallet, Star, ChevronRight, Zap } from "lucide-react"; 
+import { 
+  LogOut, Wallet, CreditCard, X, 
+  History, Building2, CheckCircle, Clock, XCircle, Briefcase 
+} from "lucide-react"; 
+
+// IMPORT HELPERS
+import { requestWithdrawal, getWithdrawalHistory } from "../../lib/billing"; 
+import { getUserSubmissions } from "../../lib/tasks"; // <--- NEW IMPORT
 
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // DATA STATE
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  
+  // UI STATE
+  const [activeTab, setActiveTab] = useState("wallet"); // 'wallet', 'tasks', 'jobs'
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState(50);
+  const [withdrawMethod, setWithdrawMethod] = useState("TNG");
+  const [bankDetails, setBankDetails] = useState({ name: "", account: "", bankName: "Maybank" });
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -17,221 +36,223 @@ export default function ProfilePage() {
         router.push("/login"); 
         return;
       }
-
       try {
+        // 1. Get User Data
         const docRef = doc(db, "users", currentUser.uid);
         const docSnap = await getDoc(docRef);
-
+        
         if (docSnap.exists()) {
           setUser(docSnap.data());
+          
+          // 2. Get Withdrawals
+          const wHistory = await getWithdrawalHistory(currentUser.uid);
+          setWithdrawals(wHistory);
+
+          // 3. Get Task History
+          const tHistory = await getUserSubmissions(currentUser.uid);
+          setTasks(tHistory);
+
         } else {
-          setUser({
-              email: currentUser.email,
-              name: "User",
-              uid: currentUser.uid,
-              balance: 0
-          });
+          setUser({ email: currentUser.email, name: "User", uid: currentUser.uid, balance: 0 });
         }
       } catch (error) {
-        console.error("Error fetching user:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     });
-
     return () => unsubscribe();
   }, [router]);
 
-  if (loading) {
-    return <div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center">Loading...</div>;
-  }
+  // --- WITHDRAWAL LOGIC ---
+  const handleWithdraw = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
 
+    const result = await requestWithdrawal(
+        user.uid, 
+        withdrawAmount, 
+        withdrawMethod, 
+        {
+            accountName: bankDetails.name,
+            accountNumber: bankDetails.account,
+            bankName: withdrawMethod === "BANK" ? bankDetails.bankName : "Touch 'n Go"
+        }
+    );
+
+    if (result.success) {
+        alert("Withdrawal requested!");
+        setShowWithdraw(false);
+        setUser(prev => ({ ...prev, balance: prev.balance - withdrawAmount }));
+        window.location.reload(); 
+    } else {
+        alert("Failed: " + result.error);
+    }
+    setIsProcessing(false);
+  };
+
+  if (loading) return <div className="min-h-screen bg-kasi-gray flex items-center justify-center">Loading...</div>;
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 pb-20">
+    <div className="min-h-screen bg-kasi-gray text-gray-900 pb-24 font-sans">
       
-      {/* Top Header Section */}
-      <div className="bg-white p-6 shadow-sm sticky top-0 z-10">
+      {/* 1. TOP HEADER */}
+      <div className="bg-white px-6 py-6 sticky top-0 z-20 shadow-sm mb-6">
         <div className="flex justify-between items-center max-w-md mx-auto">
-          <h1 className="text-2xl font-black tracking-tight text-gray-900">My Profile</h1>
-          <button onClick={() => auth.signOut()} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 transition">
-            <LogOut size={20} className="text-red-500" />
+          <h1 className="text-2xl font-black text-kasi-dark">Profile</h1>
+          <button onClick={() => auth.signOut()} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 text-gray-600 hover:text-red-500 transition">
+            <LogOut size={20} />
           </button>
         </div>
       </div>
 
-      <div className="max-w-md mx-auto p-4 space-y-6">
+      <div className="max-w-md mx-auto px-6 space-y-6">
         
-        {/* User Info Card */}
-        <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100 flex items-center space-x-4">
+        {/* 2. USER INFO */}
+        <div className="flex items-center space-x-4">
           <div className="w-16 h-16 rounded-full bg-kasi-gold/10 flex items-center justify-center text-2xl font-bold text-kasi-gold border-2 border-kasi-gold">
-            {/* Safety Check for Name */}
             {(user?.name || user?.email || "U").charAt(0).toUpperCase()}
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
-                {user?.name || "Anonymous User"}
-            </h2>
-            <p className="text-gray-500 text-sm">{user?.email}</p>
+            <h2 className="text-xl font-bold text-kasi-dark">{user?.name || "Anonymous"}</h2>
+            <p className="text-kasi-subtle text-sm">{user?.email}</p>
           </div>
         </div>
 
-        {/* Balance Card */}
-        <div className="grid grid-cols-2 gap-4">
-            <div className="bg-kasi-gold p-5 rounded-3xl shadow-lg text-kasi-black relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-20"><Wallet size={40} /></div>
-                <p className="text-kasi-black/80 text-xs font-medium uppercase tracking-wider">Total Balance</p>
-                <p className="text-3xl font-black mt-1">${user?.balance || 0}</p>
-            </div>
-            <div className="bg-white p-5 rounded-3xl shadow-lg border border-gray-100 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 text-[#D4AF37]"><Star size={40} /></div>
-                <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Status</p>
-                <p className="text-xl font-bold mt-1 text-gray-900">Free Plan</p>
-                <p className="text-xs text-green-500 font-bold mt-1">Active</p>
-            </div>
-        </div>
-
-        {/* Missions / Menu Section */}
-        <div className="space-y-3">
-          <h3 className="font-bold text-gray-900 text-lg px-2">Quick Actions</h3>
-          
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
+        {/* 3. BALANCE CARD (Always Visible) */}
+        <div className="bg-kasi-dark text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10"><Wallet size={80} /></div>
+            <p className="text-gray-400 text-xs font-bold uppercase">Current Balance</p>
+            <p className="text-4xl font-black mt-2 text-kasi-gold">RM {user?.balance?.toFixed(2) || "0.00"}</p>
             
-            <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><Zap size={20} /></div>
-                <span className="font-semibold text-gray-700">Daily Missions</span>
-              </div>
-              <ChevronRight size={18} className="text-gray-400" />
+            <button 
+                onClick={() => setShowWithdraw(true)}
+                className="mt-6 w-full bg-white text-kasi-dark font-bold py-3 rounded-xl hover:bg-gray-200 transition flex items-center justify-center gap-2"
+            >
+                <CreditCard size={18}/> Withdraw Funds
             </button>
-
-            <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-50 text-green-600 rounded-xl"><Wallet size={20} /></div>
-                <span className="font-semibold text-gray-700">Withdraw Funds</span>
-              </div>
-              <ChevronRight size={18} className="text-gray-400" />
-            </button>
-
-            <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition">
-               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-purple-50 text-purple-600 rounded-xl"><Star size={20} /></div>
-                <span className="font-semibold text-gray-700">Upgrade Plan</span>
-              </div>
-              <ChevronRight size={18} className="text-gray-400" />
-            </button>
-
-          </div>
         </div>
 
+        {/* 4. TABS NAVIGATION */}
+        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+            {['wallet', 'tasks', 'jobs'].map((tab) => (
+                <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg capitalize transition-all ${
+                        activeTab === tab 
+                        ? "bg-kasi-gold text-kasi-dark shadow-sm" 
+                        : "text-gray-400 hover:bg-gray-50"
+                    }`}
+                >
+                    {tab === 'wallet' ? 'Withdrawals' : tab}
+                </button>
+            ))}
+        </div>
+
+        {/* 5. TAB CONTENT */}
+        <div className="min-h-[200px]">
+            
+            {/* TAB: WALLET HISTORY */}
+            {activeTab === 'wallet' && (
+                <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction History</h3>
+                    {withdrawals.length === 0 ? (
+                        <p className="text-center text-gray-400 text-sm py-4">No withdrawals yet.</p>
+                    ) : (
+                        withdrawals.map((tx, i) => (
+                            <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold text-sm text-kasi-dark">
+                                        {tx.method === 'TNG' ? "Touch 'n Go" : tx.details.bankName}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                        {new Date(tx.requestedAt.seconds * 1000).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-black text-kasi-dark">- RM {tx.amount}</p>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                        tx.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                        tx.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                    }`}>
+                                        {tx.status.toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+
+            {/* TAB: TASK HISTORY */}
+            {activeTab === 'tasks' && (
+                <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">My Task Submissions</h3>
+                    {tasks.length === 0 ? (
+                        <p className="text-center text-gray-400 text-sm py-4">No tasks completed yet.</p>
+                    ) : (
+                        tasks.map((task, i) => (
+                            <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold text-sm text-kasi-dark line-clamp-1">{task.taskTitle}</p>
+                                    <p className="text-xs text-gray-400">Proof: {task.proof?.substring(0, 15)}...</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-bold text-kasi-gold">+ RM {task.reward?.toFixed(2)}</p>
+                                    <div className="flex justify-end mt-1">
+                                        {task.status === 'pending' && <Clock size={14} className="text-yellow-500"/>}
+                                        {task.status === 'approved' && <CheckCircle size={14} className="text-green-500"/>}
+                                        {task.status === 'rejected' && <XCircle size={14} className="text-red-500"/>}
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+
+            {/* TAB: JOB HISTORY (Future) */}
+            {activeTab === 'jobs' && (
+                <div className="text-center py-10 bg-white rounded-3xl border border-dashed border-gray-200">
+                    <Briefcase size={32} className="mx-auto text-gray-300 mb-2"/>
+                    <h3 className="font-bold text-gray-400">Coming Soon</h3>
+                    <p className="text-xs text-gray-400 max-w-[200px] mx-auto mt-1">
+                        You will soon be able to apply for full-time & part-time jobs here.
+                    </p>
+                </div>
+            )}
+
+        </div>
       </div>
+
+      {/* WITHDRAWAL MODAL (Same as before) */}
+      {showWithdraw && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowWithdraw(false)}></div>
+            <div className="bg-white w-full max-w-md m-4 rounded-3xl p-6 relative z-10 animate-slide-up">
+                <button onClick={() => setShowWithdraw(false)} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full"><X size={20} className="text-kasi-dark"/></button>
+                <h2 className="text-2xl font-black text-kasi-dark mb-1">Withdraw Money</h2>
+                <p className="text-sm text-gray-500 mb-6">Minimum withdrawal is RM 50.00</p>
+                <form onSubmit={handleWithdraw} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Amount (RM)</label>
+                        <input type="number" min="50" step="0.01" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-lg font-bold text-kasi-dark outline-none focus:border-kasi-gold" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button type="button" onClick={() => setWithdrawMethod("TNG")} className={`p-3 rounded-xl border-2 font-bold text-sm flex flex-col items-center gap-2 ${withdrawMethod === "TNG" ? "border-kasi-gold bg-yellow-50 text-kasi-dark" : "border-gray-200 text-gray-400"}`}><Wallet size={24}/> Touch 'n Go</button>
+                        <button type="button" onClick={() => setWithdrawMethod("BANK")} className={`p-3 rounded-xl border-2 font-bold text-sm flex flex-col items-center gap-2 ${withdrawMethod === "BANK" ? "border-kasi-gold bg-yellow-50 text-kasi-dark" : "border-gray-200 text-gray-400"}`}><Building2 size={24}/> Bank Transfer</button>
+                    </div>
+                    <div className="space-y-3 pt-2">
+                        <input required placeholder="Full Name" value={bankDetails.name} onChange={(e) => setBankDetails({...bankDetails, name: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-kasi-gold" />
+                        <input required placeholder={withdrawMethod === "TNG" ? "Phone Number" : "Account Number"} value={bankDetails.account} onChange={(e) => setBankDetails({...bankDetails, account: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-kasi-gold" />
+                    </div>
+                    <button type="submit" disabled={isProcessing} className="w-full bg-kasi-dark text-white font-bold py-4 rounded-xl shadow-lg mt-4 disabled:opacity-70 hover:bg-gray-800 transition">{isProcessing ? "Processing..." : "Confirm Withdrawal"}</button>
+                </form>
+            </div>
+        </div>
+      )}
     </div>
   );
 }
-
-
-  {/* */}
-//   return (
-//     <div className="min-h-screen bg-kasi-gray pb-24">
-      
-//       {/* 1. TOP HEADER (Black) */}
-//       <div className="bg-kasi-dark pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-lg relative z-10">
-//         <div className="flex justify-between items-center mb-6">
-//           <h1 className="text-white text-xl font-bold">My Profile</h1>
-//           <button className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20">
-//             <Settings size={20} />
-//           </button>
-//         </div>
-
-//         {/* User Info - NOW DYNAMIC */}
-//         <div className="flex items-center gap-4">
-//           <div className="w-16 h-16 rounded-full bg-gray-300 border-2 border-kasi-gold flex items-center justify-center text-2xl">
-//            {/* --- THE FIX IS HERE --- */}
-//             {/* We use ?. and || to prevent the crash */}
-//             {(user?.name || user?.email || "U").charAt(0).toUpperCase()}
-//           </div>
-//           <div>
-//             <h2 className="text-white text-lg font-bold">{user.name}</h2>
-//             <p className="text-gray-400 text-xs">{user.email}</p>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* 2. THE WALLET CARD (Floating Overlay) */}
-//       <div className="px-6 -mt-16 relative z-20">
-//         <div className="bg-kasi-gold rounded-2xl p-6 shadow-float text-kasi-dark">
-//           <div className="flex justify-between items-start mb-2">
-//             <div className="flex items-center gap-2 opacity-80">
-//               <Wallet size={18} />
-//               <span className="text-xs font-bold uppercase tracking-wider">Baki Dompet</span>
-//             </div>
-//            <Link href="/finance">
-//   <button className="bg-kasi-dark text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-md active:scale-95 transition-transform cursor-pointer">
-//     Withdraw
-//   </button>
-// </Link>
-//           </div>
-          
-//           {/* Dynamic Balance */}
-//           <div className="text-4xl font-black tracking-tight mb-1">
-//             {user.balance || "RM 0.00"}
-//           </div>
-//           <p className="text-sm font-medium opacity-70">
-//             +500 Points (Redeemable)
-//           </p>
-//         </div>
-//       </div>
-
-//       {/* ... (Keep the rest of the Stats Grid & History code exactly the same) ... */}
-      
-//       {/* 3. STATS GRID */}
-//       <div className="px-6 mt-6 grid grid-cols-2 gap-4">
-//         {/* Card 1 */}
-//         <div className="bg-white p-4 rounded-2xl shadow-card flex flex-col items-center justify-center text-center">
-//           <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2">
-//             <CheckCircle size={20} />
-//           </div>
-//           <span className="text-2xl font-black text-kasi-dark">12</span>
-//           <span className="text-xs text-gray-400 font-medium">Jobs Done</span>
-//         </div>
-
-//         {/* Card 2 */}
-//         <div className="bg-white p-4 rounded-2xl shadow-card flex flex-col items-center justify-center text-center">
-//           <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-2">
-//             <Clock size={20} />
-//           </div>
-//           <span className="text-2xl font-black text-kasi-dark">85</span>
-//           <span className="text-xs text-gray-400 font-medium">Tasks Done</span>
-//         </div>
-//       </div>
-      
-//       {/* ... History Section ... */}
-//       <div className="px-6 mt-8">
-//       <h3 className="text-kasi-dark font-bold text-lg mb-4">Recent Activity</h3>
-      
-//       <div className="space-y-3">
-//         {/* If no history, show message */}
-//         {(!user.history || user.history.length === 0) && (
-//             <p className="text-gray-400 text-xs italic">No activity yet. Go do some tasks!</p>
-//         )}
-
-//         {/* Map through the Real History */}
-//         {user.history && user.history.map((item) => (
-//           <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between">
-//             <div className="flex items-center gap-3">
-//               <div className="bg-yellow-100 p-2 rounded-lg">⚡</div>
-//               <div>
-//                 <p className="text-sm font-bold text-kasi-dark">{item.title}</p>
-//                 <p className="text-[10px] text-gray-400">{item.date}</p>
-//               </div>
-//             </div>
-//             <span className="text-green-600 font-bold text-sm">{item.amount}</span>
-//           </div>
-//         ))}
-//       </div>
-//     </div>
-
-//     </div>
-//   );
-// }

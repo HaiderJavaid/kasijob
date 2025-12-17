@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, Zap, User } from "lucide-react";
+import { Briefcase, Zap, User, Trophy } from "lucide-react";
 
 export default function BottomNav() {
   const pathname = usePathname();
+
+  // Function to hide nav on certain routes
+  const hiddenRoutes = ["/", "/login", "/register", "/admin/tasks", "/admin/reviews"];
+  if (hiddenRoutes.includes(pathname)) return null;
 
   // Simple function to check if a tab is active
   const isActive = (path) => pathname === path;
@@ -32,6 +36,16 @@ export default function BottomNav() {
           </div>
           <span className={`text-[10px] font-medium ${isActive('/tasks') ? 'text-kasi-gold' : 'text-gray-500'}`}>
             Tasks
+          </span>
+        </Link>
+
+        {/* PROFILE TAB */}
+        <Link href="/leaderboard" className="flex flex-col items-center gap-1 group">
+          <div className={`p-2 rounded-full transition-all duration-300 ${isActive('/leaderboard') ? 'bg-kasi-gold text-kasi-dark' : 'text-gray-400 group-hover:text-white'}`}>
+            <Trophy size={20} strokeWidth={2.5} />
+          </div>
+          <span className={`text-[10px] font-medium ${isActive('/leaderboard') ? 'text-kasi-gold' : 'text-gray-500'}`}>
+            Leaderboard
           </span>
         </Link>
 

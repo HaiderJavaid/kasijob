@@ -1,166 +1,225 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic"; // <--- ADD THIS LINE AT THE TOP
-
-import { useState, useEffect } from "react"; // <--- Hook for state
-import { Play, FileText, Share2, Gift, Zap, ChevronRight } from "lucide-react";
-import { getCurrentUser, updateUserBalance } from "@/lib/auth"; // <--- Import our helpers
-
-// Mock Data: The Missions
-const TASKS = [
-  {
-    id: 1,
-    title: "Watch Video Ad",
-    points: 50,
-    desc: "15 seconds",
-    icon: <Play size={24} fill="currentColor" />,
-    color: "text-red-500 bg-red-100",
-    action: "Watch"
-  },
-  {
-    id: 2,
-    title: "Answer Survey",
-    points: 120,
-    desc: "About food",
-    icon: <FileText size={24} />,
-    color: "text-blue-500 bg-blue-100",
-    action: "Start"
-  },
-  {
-    id: 3,
-    title: "Share on FB",
-    points: 30,
-    desc: "Public post",
-    icon: <Share2 size={24} />,
-    color: "text-indigo-500 bg-indigo-100",
-    action: "Share"
-  },
-  {
-    id: 4,
-    title: "Install App",
-    points: 500,
-    desc: "Game app",
-    icon: <Zap size={24} fill="currentColor" />,
-    color: "text-kasi-gold bg-black",
-    action: "Install"
-  }
-];
+import { useState, useEffect } from "react";
+import { getCurrentUser } from "../../lib/auth"; 
+import { getActiveTasks, submitTaskProof, getUserSubmissions } from "../../lib/tasks";
+import { performDailyCheckIn } from "../../lib/gamification";
+import { 
+  ChevronRight, Clock, CheckCircle, XCircle, Gift, Zap, 
+  Share2, Download, MessageCircle, Star, AlertCircle, Upload, X 
+} from "lucide-react";
 
 export default function TasksPage() {
-  const [user, setUser] = useState({ points: 0, balance: "RM 0.00" });
-  const [loadingTask, setLoadingTask] = useState(null); // To show "Processing..."
+  const [user, setUser] = useState(null);
+  const [tasks, setTasks] = useState([]); 
+  const [mySubmissions, setMySubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(null); // State for the countdown string
+  
+  // UI State
+  const [activeTab, setActiveTab] = useState("available");
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [proofInput, setProofInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkInLoading, setCheckInLoading] = useState(false);
 
-  // Load User Data on Start
+  // TIMER LOGIC: Update countdown every second
+useEffect(() => {
+  if (!user?.lastCheckIn) return;
+
+  const interval = setInterval(() => {
+    const lastCheckInTime = user.lastCheckIn.toDate().getTime();
+    const now = new Date().getTime();
+    const cooldown = 24 * 60 * 60 * 1000; // 24 Hours in milliseconds
+    const distance = lastCheckInTime + cooldown - now;
+
+    if (distance < 0) {
+      setTimeLeft(null); // Timer finished, button becomes clickable
+      clearInterval(interval);
+    } else {
+      // Calculate hours, minutes, seconds
+      const h = Math.floor((distance / (1000 * 60 * 60)) % 24);
+      const m = Math.floor((distance / (1000 * 60)) % 60);
+      const s = Math.floor((distance / 1000) % 60);
+      setTimeLeft(`${h}h ${m}m ${s}s`);
+    }
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [user]);
+
+  // --- 1. INITIALIZE DATA ---
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser) setUser(currentUser);
+    const initData = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        
+        if (currentUser) {
+          setUser(currentUser); // Update state
+
+          // FETCH TASKS
+          const allTasks = await getActiveTasks();
+          
+          // FETCH USER HISTORY using 'currentUser' (NOT 'user' state)
+          const userSubs = await getUserSubmissions(currentUser.uid);
+          setMySubmissions(userSubs);
+
+          // FILTER AVAILABLE TASKS
+          const submittedTaskIds = userSubs.map(sub => sub.taskId);
+          const available = allTasks.filter(task => !submittedTaskIds.includes(task.id));
+          setTasks(available);
+        }
+      } catch (error) {
+        console.error("Error loading tasks:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    initData();
   }, []);
 
-  // THE MAGIC FUNCTION
-  // Inside app/tasks/page.js
+  // --- 2. HANDLE SUBMIT TASK ---
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!proofInput) return alert("Please provide proof!");
+    if (!user) return alert("You must be logged in.");
 
-const handleTaskClick = (taskId, taskTitle, points, rewardRM) => {
-  setLoadingTask(taskId);
-
-  setTimeout(() => {
-    // PASS 'taskTitle' as the 3rd argument!
-    const updatedUser = updateUserBalance(rewardRM, points, taskTitle); 
+    setIsSubmitting(true);
     
-    setUser(updatedUser);
-    setLoadingTask(null);
-    alert(`Tahniah! You earned ${points} pts from ${taskTitle}`);
-  }, 1500);
-};
-  return (
-    <div className="min-h-screen bg-kasi-gray pb-28 relative">
+    const result = await submitTaskProof(
+      user.uid, 
+      selectedTask.id, 
+      selectedTask.title,
+      selectedTask.reward,
+      proofInput
+    );
+
+    if (result.success) {
+      alert("Task submitted for review!");
+      // Update local lists immediately
+      setMySubmissions([...mySubmissions, { 
+        taskId: selectedTask.id, 
+        taskTitle: selectedTask.title, 
+        reward: selectedTask.reward,
+        status: "pending", 
+        proof: proofInput 
+      }]);
+      setTasks(tasks.filter(t => t.id !== selectedTask.id));
       
-      {/* 1. GAMIFIED HEADER */}
-      <div className="bg-kasi-dark pt-12 pb-16 px-6 rounded-b-[2rem] shadow-lg relative z-10">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-white text-2xl font-black mb-1">Misi Harian</h1>
-            <p className="text-gray-400 text-xs">Complete tasks, get paid.</p>
+      setSelectedTask(null);
+      setProofInput("");
+    } else {
+      alert("Error: " + result.error);
+    }
+    setIsSubmitting(false);
+  };
+
+  // --- 3. HANDLE DAILY CHECK-IN ---
+  const handleCheckIn = async () => {
+    if (!user) return; // Safety check
+    setCheckInLoading(true);
+    
+    const result = await performDailyCheckIn(user.uid);
+    
+    if (result.success) {
+      alert(`Success! You earned RM ${result.reward.toFixed(2)}`);
+      window.location.reload(); 
+    } else {
+      alert(result.error);
+    }
+    setCheckInLoading(false);
+  };
+
+  // --- 4. HELPER: ICONS ---
+  const getTaskIcon = (type) => {
+    switch(type) {
+      case 'download': return <Download size={20} className="text-blue-600" />;
+      case 'social': return <Share2 size={20} className="text-pink-500" />;
+      case 'review': return <Star size={20} className="text-yellow-500" />;
+      case 'comment': return <MessageCircle size={20} className="text-purple-500" />;
+      default: return <Zap size={20} className="text-gray-600" />;
+    }
+  };
+
+  return (
+  <div className="min-h-screen bg-kasi-gray pb-24 relative font-sans">
+    
+    {/* HEADER */}
+    <div className="bg-kasi-dark pt-8 pb-20 px-6 rounded-b-[2.5rem] shadow-lg">
+      <h1 className="text-white text-2xl font-black">Tasks</h1>
+      <p className="text-kasi-subtle text-sm">Complete tasks, earn cash.</p>
+    </div>
+
+    {/* CONTAINER FOR CONTENT */}
+    <div className="px-5 -mt-12 space-y-6">
+
+      {/* 1. DAILY CHECK-IN CARD (Floating at top) */}
+      <div className="bg-white p-4 rounded-2xl shadow-lg flex items-center justify-between border-b-4 border-yellow-100">
+        <div className="flex items-center gap-3">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${timeLeft ? "bg-gray-100 text-gray-400" : "bg-yellow-50 text-yellow-600 animate-bounce"}`}>
+            <Gift size={24} />
           </div>
-          <div className="text-right">
-            {/* DYNAMIC POINTS */}
-            <div className="text-kasi-gold font-black text-3xl animate-pulse">
-              {user.points || 0}
-            </div>
-            <div className="text-white text-[10px] uppercase tracking-widest opacity-60">My Points</div>
+          <div>
+            <h3 className="font-black text-kasi-dark text-base">Daily Bonus</h3>
+            <p className="text-xs text-gray-400">
+              {timeLeft ? "Come back tomorrow" : "Claim free money!"}
+            </p>
           </div>
         </div>
+        
+        {/* BUTTON TURNS INTO TIMER */}
+        <button 
+          onClick={handleCheckIn}
+          disabled={!!timeLeft || checkInLoading || !user}
+          className={`text-xs font-black px-5 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 ${
+            timeLeft 
+              ? "bg-gray-100 text-gray-400 cursor-not-allowed" // Timer Style
+              : "bg-kasi-gold text-kasi-dark active:scale-95 hover:shadow-lg" // Active Style
+          }`}
+        >
+          {checkInLoading ? "..." : timeLeft ? (
+            <><Clock size={14}/> {timeLeft}</> 
+          ) : (
+            "Claim RM0.10"
+          )}
+        </button>
       </div>
 
-      {/* 2. DAILY CHECK-IN */}
-      <div className="px-6 -mt-8 relative z-20 mb-8">
-        <div className="bg-white p-4 rounded-2xl shadow-float flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center text-kasi-dark">
-              <Gift size={20} />
-            </div>
-            <div>
-              <h3 className="font-bold text-kasi-dark text-sm">Daily Check-in</h3>
-              <p className="text-xs text-gray-500">Free money everyday!</p>
-            </div>
-          </div>
+      {/* 2. TABS (Now below the Check-in Card) */}
+      <div className="flex bg-white p-1 rounded-xl shadow-sm">
           <button 
-            onClick={() => handleTaskClick(99, "Daily Check-in", 10, 0.10)}
-            className="bg-kasi-gold text-kasi-dark text-xs font-bold px-4 py-2 rounded-lg shadow-sm active:scale-95 transition-transform"
+            onClick={() => setActiveTab("available")} 
+            className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === "available" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
           >
-            Claim +10
+            Available
           </button>
-        </div>
+          <button 
+            onClick={() => setActiveTab("history")} 
+            className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === "history" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
+          >
+            My Status
+          </button>
       </div>
 
-      {/* 3. TASK GRID */}
-      <div className="px-6">
-        <h2 className="text-kasi-dark font-bold text-lg mb-4 flex items-center gap-2">
-          Available Now <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">Live</span>
-        </h2>
-
-        <div className="grid grid-cols-2 gap-4">
-          {TASKS.map((task) => (
-            <div 
-              key={task.id} 
-              onClick={() => handleTaskClick(task.id, task.title, task.points, (task.points / 100))} // Logic: 100pts = RM1
-              className={`bg-white p-4 rounded-2xl shadow-card hover:shadow-lg transition-all active:scale-95 cursor-pointer flex flex-col items-center text-center relative overflow-hidden group ${loadingTask === task.id ? "opacity-50" : ""}`}
-            >
-              
-              {/* Points Badge */}
-              <div className="absolute top-0 right-0 bg-kasi-gold text-kasi-dark text-[10px] font-bold px-2 py-1 rounded-bl-xl">
-                +{task.points}
-              </div>
-
-              {/* Icon */}
-              <div className={`w-14 h-14 rounded-full ${task.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                {task.icon}
-              </div>
-
-              {/* Text */}
-              <h3 className="font-bold text-kasi-dark text-sm mb-1">{task.title}</h3>
-              <p className="text-xs text-gray-400 mb-4">{task.desc}</p>
-
-              {/* Button State */}
-              <div className="w-full mt-auto bg-gray-50 text-kasi-dark text-xs font-bold py-2 rounded-lg group-hover:bg-kasi-dark group-hover:text-white transition-colors">
-                {loadingTask === task.id ? "Wait..." : task.action}
-              </div>
-
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. LEADERBOARD (Keep as is) */}
-      <div className="px-6 mt-8">
-        <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-5 text-white flex items-center justify-between shadow-lg">
-          <div>
-            <h3 className="font-bold text-sm">Top Earner Today</h3>
-            <p className="text-xs text-purple-200">Bossku earned 5,000 pts</p>
+      {/* 3. TASK LIST (Content based on Tab) */}
+      {activeTab === "available" && (
+          <div className="space-y-3">
+             {/* ... Your Existing Task Mapping Logic ... */}
+             {/* ... */}
           </div>
-          <ChevronRight className="text-white/50" />
-        </div>
-      </div>
+      )}
+
+      {activeTab === "history" && (
+          <div className="space-y-3">
+             {/* ... Your Existing History Mapping Logic ... */}
+             {/* ... */}
+          </div>
+      )}
 
     </div>
-  );
+    
+    {/* ... Modal Logic ... */}
+  </div>
+);
 }
