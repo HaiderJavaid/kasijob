@@ -234,11 +234,11 @@ export default function ProfilePage() {
             <div className="bg-white w-full max-w-md m-4 rounded-3xl p-6 relative z-10 animate-slide-up">
                 <button onClick={() => setShowWithdraw(false)} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full"><X size={20} className="text-kasi-dark"/></button>
                 <h2 className="text-2xl font-black text-kasi-dark mb-1">Withdraw Money</h2>
-                <p className="text-sm text-gray-500 mb-6">Minimum withdrawal is RM 50.00</p>
+                <p className="text-sm text-gray-500 mb-6">Minimum withdrawal is RM 30.00</p>
                 <form onSubmit={handleWithdraw} className="space-y-4">
                     <div>
                         <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Amount (RM)</label>
-                        <input type="number" min="50" step="0.01" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-lg font-bold text-kasi-dark outline-none focus:border-kasi-gold" />
+                        <input type="number" min="30" step="0.01" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-lg font-bold text-kasi-dark outline-none focus:border-kasi-gold" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <button type="button" onClick={() => setWithdrawMethod("TNG")} className={`p-3 rounded-xl border-2 font-bold text-sm flex flex-col items-center gap-2 ${withdrawMethod === "TNG" ? "border-kasi-gold bg-yellow-50 text-kasi-dark" : "border-gray-200 text-gray-400"}`}><Wallet size={24}/> Touch 'n Go</button>

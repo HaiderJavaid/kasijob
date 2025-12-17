@@ -203,23 +203,109 @@ useEffect(() => {
       </div>
 
       {/* 3. TASK LIST (Content based on Tab) */}
+     {/* 3. TASK LIST (Available) */}
       {activeTab === "available" && (
           <div className="space-y-3">
-             {/* ... Your Existing Task Mapping Logic ... */}
-             {/* ... */}
+             {loading ? (
+                <p className="text-center text-gray-400 py-10">Loading...</p> 
+             ) : tasks.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm">No tasks available right now.</div>
+             ) : (
+                tasks.map((task) => (
+                    <div 
+                        key={task.id} 
+                        onClick={() => setSelectedTask(task)} 
+                        className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
+                    >
+                        <div className="flex items-center gap-4">
+                            {/* Icon Helper */}
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100">
+                                {getTaskIcon(task.type)}
+                            </div>
+                            <div>
+                                <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{task.type}</span>
+                                  <p className="text-kasi-subtle text-xs line-clamp-1">{task.description}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <span className="block text-kasi-gold font-black text-base">+RM{task.reward}</span>
+                    </div>
+                ))
+             )}
           </div>
       )}
 
+      {/* 4. HISTORY LIST (My Status) */}
       {activeTab === "history" && (
           <div className="space-y-3">
-             {/* ... Your Existing History Mapping Logic ... */}
-             {/* ... */}
+             {mySubmissions.length === 0 ? (
+                <p className="text-center text-gray-400 py-10 text-sm">No submissions yet.</p> 
+             ) : (
+                mySubmissions.map((sub, i) => (
+                    <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-90">
+                        <div>
+                            <h3 className="text-kasi-dark font-bold text-sm">{sub.taskTitle}</h3>
+                            <p className="text-xs text-gray-400 mt-1 truncate max-w-[200px]">Proof: {sub.proof}</p>
+                        </div>
+                        <div>
+                            {sub.status === 'pending' && <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"><Clock size={10}/> Review</span>}
+                            {sub.status === 'approved' && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"><CheckCircle size={10}/> Paid</span>}
+                            {sub.status === 'rejected' && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"><XCircle size={10}/> Failed</span>}
+                        </div>
+                    </div>
+                ))
+             )}
           </div>
       )}
 
     </div>
     
-    {/* ... Modal Logic ... */}
+    {/* 5. TASK DETAIL MODAL */}
+      {selectedTask && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTask(null)}></div>
+            
+            {/* Modal Content */}
+            <div className="bg-white w-full max-w-md m-4 rounded-3xl p-6 relative z-10 animate-slide-up">
+                <button onClick={() => setSelectedTask(null)} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full">
+                    <X size={20} className="text-kasi-dark"/>
+                </button>
+
+                <div className="mb-6">
+                    <span className="bg-kasi-gold text-kasi-dark text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">{selectedTask.type}</span>
+                    <h2 className="text-2xl font-black text-kasi-dark mt-2">{selectedTask.title}</h2>
+                    <p className="text-kasi-dark font-bold text-xl mt-1 text-[#D4AF37]">Reward: RM {selectedTask.reward}</p>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
+                    <h3 className="text-sm font-bold text-kasi-dark mb-2 flex items-center gap-2"><AlertCircle size={16}/> Instructions:</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{selectedTask.description}</p>
+                    <a href={selectedTask.link} target="_blank" className="block mt-4 text-center w-full bg-kasi-dark text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition">Go to Task Link</a>
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                    <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Proof of Completion</label>
+                    <textarea 
+                        required 
+                        value={proofInput} 
+                        onChange={(e) => setProofInput(e.target.value)} 
+                        placeholder="Paste code, username, or caption here..." 
+                        className="w-full bg-white border-2 border-gray-200 focus:border-kasi-gold rounded-xl p-3 text-sm text-kasi-dark outline-none h-24 mb-3 resize-none"
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={isSubmitting} 
+                        className="w-full bg-kasi-gold text-kasi-dark font-black py-4 rounded-xl shadow-lg hover:shadow-xl transition active:scale-95 disabled:opacity-70"
+                    >
+                        {isSubmitting ? "Submitting..." : "Submit Task"}
+                    </button>
+                </form>
+            </div>
+        </div>
+      )}
   </div>
 );
 }
