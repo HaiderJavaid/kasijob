@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, MapPin, Clock, DollarSign, CheckCircle, Shield } from "lucide-react";
 import { useParams } from "next/navigation";
-import { getAllJobs } from "@/lib/jobs";
+import { getAllJobs } from "@/src/lib/jobs";
 
 // MOCK DATABASE (Same as the list, but with descriptions)
 const JOBS_DB = [

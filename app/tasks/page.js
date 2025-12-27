@@ -6,8 +6,8 @@ import { getCurrentUser } from "../../lib/auth";
 import { getActiveTasks, submitTaskProof, getUserSubmissions } from "../../lib/tasks";
 import { performDailyCheckIn } from "../../lib/gamification";
 import { 
-  ChevronRight, Clock, CheckCircle, XCircle, Gift, Zap, 
-  Share2, Download, MessageCircle, Star, AlertCircle, Upload, X 
+  Clock, CheckCircle, XCircle, Gift, Zap, 
+  Share2, Download, MessageCircle, Star, AlertCircle, X, ExternalLink, ArrowRight, CheckSquare
 } from "lucide-react";
 
 export default function TasksPage() {
@@ -15,60 +15,81 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState([]); 
   const [mySubmissions, setMySubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(null); // State for the countdown string
+  const [timeLeft, setTimeLeft] = useState(null); 
   
+  // Notification State
+  const [newTasksCount, setNewTasksCount] = useState(0);
+  const [updatesCount, setUpdatesCount] = useState(0);
+
   // UI State
   const [activeTab, setActiveTab] = useState("available");
+  
+  // Wizard State
   const [selectedTask, setSelectedTask] = useState(null);
+  const [modalStep, setModalStep] = useState(1); 
+  const [linkClicked, setLinkClicked] = useState(false); 
+  
   const [proofInput, setProofInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkInLoading, setCheckInLoading] = useState(false);
 
-  // TIMER LOGIC: Update countdown every second
-useEffect(() => {
-  if (!user?.lastCheckIn) return;
+  // HELPER: Check if a date is NEWER than last visit
+  const isNew = (firebaseTimestamp, type) => {
+    if (!firebaseTimestamp) return false;
+    const lastVisit = parseInt(localStorage.getItem(`kasi_last_visit_${type}`) || "0");
+    const itemTime = firebaseTimestamp.toDate ? firebaseTimestamp.toDate().getTime() : new Date(firebaseTimestamp).getTime();
+    const isRecent = (Date.now() - itemTime) < (48 * 60 * 60 * 1000);
+    return itemTime > lastVisit && isRecent;
+  };
 
-  const interval = setInterval(() => {
-    const lastCheckInTime = user.lastCheckIn.toDate().getTime();
-    const now = new Date().getTime();
-    const cooldown = 24 * 60 * 60 * 1000; // 24 Hours in milliseconds
-    const distance = lastCheckInTime + cooldown - now;
+  // 1. TIMER LOGIC (Runs every second)
+  useEffect(() => {
+    if (!user?.lastCheckIn) return;
+    
+    const interval = setInterval(() => {
+      const lastCheckInTime = user.lastCheckIn.toDate ? user.lastCheckIn.toDate().getTime() : new Date(user.lastCheckIn).getTime();
+      const now = new Date().getTime();
+      const distance = lastCheckInTime + (24 * 60 * 60 * 1000) - now;
 
-    if (distance < 0) {
-      setTimeLeft(null); // Timer finished, button becomes clickable
-      clearInterval(interval);
-    } else {
-      // Calculate hours, minutes, seconds
-      const h = Math.floor((distance / (1000 * 60 * 60)) % 24);
-      const m = Math.floor((distance / (1000 * 60)) % 60);
-      const s = Math.floor((distance / 1000) % 60);
-      setTimeLeft(`${h}h ${m}m ${s}s`);
-    }
-  }, 1000);
+      if (distance < 0) {
+        setTimeLeft(null); // Timer finished
+        clearInterval(interval);
+      } else {
+        const h = Math.floor((distance / (1000 * 60 * 60)) % 24);
+        const m = Math.floor((distance / (1000 * 60)) % 60);
+        const s = Math.floor((distance / 1000) % 60); // Added seconds for liveness
+        setTimeLeft(`${h}h ${m}m ${s}s`);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [user]);
 
-  return () => clearInterval(interval);
-}, [user]);
-
-  // --- 1. INITIALIZE DATA ---
+  // 2. INITIALIZE DATA & NOTIFICATIONS
   useEffect(() => {
     const initData = async () => {
       try {
         const currentUser = await getCurrentUser();
-        
         if (currentUser) {
-          setUser(currentUser); // Update state
-
-          // FETCH TASKS
+          setUser(currentUser);
           const allTasks = await getActiveTasks();
-          
-          // FETCH USER HISTORY using 'currentUser' (NOT 'user' state)
           const userSubs = await getUserSubmissions(currentUser.uid);
           setMySubmissions(userSubs);
-
-          // FILTER AVAILABLE TASKS
+          
           const submittedTaskIds = userSubs.map(sub => sub.taskId);
           const available = allTasks.filter(task => !submittedTaskIds.includes(task.id));
           setTasks(available);
+
+          // NOTIFICATIONS
+          const newT = available.filter(t => isNew(t.createdAt, 'available')).length;
+          const newU = userSubs.filter(s => isNew(s.reviewedAt, 'history')).length;
+          
+          setNewTasksCount(newT);
+          setUpdatesCount(newU);
+
+          if (newT > 0 || newU > 0) {
+            localStorage.setItem("kasi_task_alert", "true");
+            window.dispatchEvent(new Event("kasi_notif_update"));
+          }
         }
       } catch (error) {
         console.error("Error loading tasks:", error);
@@ -79,51 +100,74 @@ useEffect(() => {
     initData();
   }, []);
 
-  // --- 2. HANDLE SUBMIT TASK ---
+  // --- HANDLE TAB CHANGE (Clear Notification on Click) ---
+  const handleTabChange = (tabName) => {
+    setActiveTab(tabName);
+    
+    // Mark viewed
+    localStorage.setItem(`kasi_last_visit_${tabName === 'available' ? 'available' : 'history'}`, Date.now().toString());
+
+    // Clear count visually
+    if (tabName === "available") setNewTasksCount(0);
+    else setUpdatesCount(0);
+
+    // Sync Navbar
+    if ((tabName === "available" && updatesCount === 0) || (tabName === "history" && newTasksCount === 0)) {
+       localStorage.setItem("kasi_task_alert", "false");
+       window.dispatchEvent(new Event("kasi_notif_update"));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!proofInput) return alert("Please provide proof!");
-    if (!user) return alert("You must be logged in.");
-
-    setIsSubmitting(true);
     
+    setIsSubmitting(true);
     const result = await submitTaskProof(
       user.uid, 
       selectedTask.id, 
       selectedTask.title,
       selectedTask.reward,
-      proofInput
+      proofInput,
+      selectedTask.readableId
     );
 
     if (result.success) {
-      alert("Task submitted for review!");
-      // Update local lists immediately
-      setMySubmissions([...mySubmissions, { 
+      setMySubmissions([{ 
         taskId: selectedTask.id, 
         taskTitle: selectedTask.title, 
         reward: selectedTask.reward,
+        readableId: selectedTask.readableId,
         status: "pending", 
-        proof: proofInput 
-      }]);
-      setTasks(tasks.filter(t => t.id !== selectedTask.id));
+        proof: proofInput,
+        submittedAt: { toDate: () => new Date() }
+      }, ...mySubmissions]);
       
+      setTasks(tasks.filter(t => t.id !== selectedTask.id));
       setSelectedTask(null);
-      setProofInput("");
     } else {
       alert("Error: " + result.error);
     }
     setIsSubmitting(false);
   };
 
-  // --- 3. HANDLE DAILY CHECK-IN ---
+  // --- 3. FIXED CHECK-IN LOGIC ---
   const handleCheckIn = async () => {
-    if (!user) return; // Safety check
+    if (!user) return;
     setCheckInLoading(true);
     
     const result = await performDailyCheckIn(user.uid);
     
     if (result.success) {
-      alert(`Success! You earned RM ${result.reward.toFixed(2)}`);
+      // 1. Show Success Message
+      alert(`Success! RM ${result.reward.toFixed(2)} added to your wallet.`);
+      
+      // 2. Optimistically update UI (Disable button instantly)
+      // We fake a "lastCheckIn" timestamp of NOW so the timer starts immediately
+      // without waiting for the page reload.
+      setUser({ ...user, lastCheckIn: { toDate: () => new Date() } });
+      
+      // 3. Force reload to sync Balance
       window.location.reload(); 
     } else {
       alert(result.error);
@@ -131,181 +175,193 @@ useEffect(() => {
     setCheckInLoading(false);
   };
 
-  // --- 4. HELPER: ICONS ---
   const getTaskIcon = (type) => {
     switch(type) {
       case 'download': return <Download size={20} className="text-blue-600" />;
       case 'social': return <Share2 size={20} className="text-pink-500" />;
       case 'review': return <Star size={20} className="text-yellow-500" />;
-      case 'comment': return <MessageCircle size={20} className="text-purple-500" />;
       default: return <Zap size={20} className="text-gray-600" />;
     }
   };
 
+  const openTask = (task) => {
+    setSelectedTask(task);
+    setModalStep(1);
+    setLinkClicked(false);
+    setProofInput("");
+  };
+
+  const handleLinkClick = () => {
+    window.open(selectedTask.link, "_blank");
+    setLinkClicked(true);
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "Just now";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("en-MY", { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+  };
+
   return (
-  <div className="min-h-screen bg-kasi-gray pb-24 relative font-sans">
-    
-    {/* HEADER */}
-    <div className="bg-kasi-dark pt-8 pb-20 px-6 rounded-b-[2.5rem] shadow-lg">
-      <h1 className="text-white text-2xl font-black">Tasks</h1>
-      <p className="text-kasi-subtle text-sm">Complete tasks, earn cash.</p>
-    </div>
+    <div className="min-h-screen bg-kasi-gray pb-24 relative font-sans">
+      
+      {/* HEADER */}
+      <div className="bg-kasi-dark pt-8 pb-20 px-6 rounded-b-[2.5rem] shadow-lg">
+        <h1 className="text-white text-2xl font-black">Tasks</h1>
+        <p className="text-kasi-subtle text-sm">Complete tasks, earn cash.</p>
+      </div>
 
-    {/* CONTAINER FOR CONTENT */}
-    <div className="px-5 -mt-12 space-y-6">
-
-      {/* 1. DAILY CHECK-IN CARD (Floating at top) */}
-      <div className="bg-white p-4 rounded-2xl shadow-lg flex items-center justify-between border-b-4 border-yellow-100">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${timeLeft ? "bg-gray-100 text-gray-400" : "bg-yellow-50 text-yellow-600 animate-bounce"}`}>
-            <Gift size={24} />
-          </div>
-          <div>
-            <h3 className="font-black text-kasi-dark text-base">Daily Bonus</h3>
-            <p className="text-xs text-gray-400">
-              {timeLeft ? "Come back tomorrow" : "Claim free money!"}
-            </p>
-          </div>
-        </div>
+      <div className="px-5 -mt-12 space-y-6">
         
-        {/* BUTTON TURNS INTO TIMER */}
-        <button 
-          onClick={handleCheckIn}
-          disabled={!!timeLeft || checkInLoading || !user}
-          className={`text-xs font-black px-5 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 ${
-            timeLeft 
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed" // Timer Style
-              : "bg-kasi-gold text-kasi-dark active:scale-95 hover:shadow-lg" // Active Style
-          }`}
-        >
-          {checkInLoading ? "..." : timeLeft ? (
-            <><Clock size={14}/> {timeLeft}</> 
-          ) : (
-            "Claim RM0.10"
-          )}
-        </button>
-      </div>
+        {/* CHECK-IN CARD */}
+        <div className="bg-white p-4 rounded-2xl shadow-lg flex items-center justify-between border-b-4 border-yellow-100">
+            <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${timeLeft ? "bg-gray-100 text-gray-400" : "bg-yellow-50 text-yellow-600 animate-bounce"}`}>
+                    <Gift size={24} />
+                </div>
+                <div>
+                    <h3 className="font-black text-kasi-dark text-base">Daily Bonus</h3>
+                    <p className="text-xs text-gray-400">{timeLeft ? "Come back tomorrow" : "Claim free money!"}</p>
+                </div>
+            </div>
+            <button 
+                onClick={handleCheckIn} 
+                disabled={!!timeLeft || checkInLoading || !user} 
+                className={`text-xs font-black px-5 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 ${timeLeft ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-kasi-gold text-kasi-dark active:scale-95"}`}
+            >
+                {checkInLoading ? "..." : timeLeft ? <><Clock size={14}/> {timeLeft}</> : "Claim RM0.10"}
+            </button>
+        </div>
 
-      {/* 2. TABS (Now below the Check-in Card) */}
-      <div className="flex bg-white p-1 rounded-xl shadow-sm">
-          <button 
-            onClick={() => setActiveTab("available")} 
-            className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === "available" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
-          >
-            Available
-          </button>
-          <button 
-            onClick={() => setActiveTab("history")} 
-            className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === "history" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
-          >
-            My Status
-          </button>
-      </div>
+        {/* TABS WITH NOTIFICATIONS */}
+        <div className="flex bg-white p-1 rounded-xl shadow-sm">
+            <button 
+                onClick={() => handleTabChange("available")} 
+                className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "available" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
+            >
+                Available
+                {newTasksCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
+            </button>
+            <button 
+                onClick={() => handleTabChange("history")} 
+                className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "history" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
+            >
+                My Status
+                {updatesCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
+            </button>
+        </div>
 
-      {/* 3. TASK LIST (Content based on Tab) */}
-     {/* 3. TASK LIST (Available) */}
-      {activeTab === "available" && (
-          <div className="space-y-3">
-             {loading ? (
-                <p className="text-center text-gray-400 py-10">Loading...</p> 
-             ) : tasks.length === 0 ? (
-                <div className="text-center py-10 text-gray-400 text-sm">No tasks available right now.</div>
-             ) : (
-                tasks.map((task) => (
-                    <div 
-                        key={task.id} 
-                        onClick={() => setSelectedTask(task)} 
-                        className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
-                    >
-                        <div className="flex items-center gap-4">
-                            {/* Icon Helper */}
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100">
-                                {getTaskIcon(task.type)}
-                            </div>
-                            <div>
-                                <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{task.type}</span>
-                                  <p className="text-kasi-subtle text-xs line-clamp-1">{task.description}</p>
+        {/* AVAILABLE LIST */}
+        {activeTab === "available" && (
+            <div className="space-y-3">
+                {loading ? <p className="text-center text-gray-400 py-10">Loading...</p> : tasks.length === 0 ? <div className="text-center py-10 text-gray-400 text-sm">No tasks available.</div> : (
+                    tasks.map((task) => (
+                        <div key={task.id} onClick={() => openTask(task)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer active:scale-95 transition-transform relative overflow-hidden">
+                            {/* PROMINENT NEW RIBBON */}
+                            {isNew(task.createdAt, 'available') && (
+                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-md z-10 animate-pulse">
+                                    NEW!
+                                </div>
+                            )}
+                            
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100">{getTaskIcon(task.type)}</div>
+                                <div>
+                                    <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
+                                    <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{task.type}</span>
                                 </div>
                             </div>
+                            <span className="block text-kasi-gold font-black text-base mt-2">+RM{task.reward}</span>
                         </div>
-                        <span className="block text-kasi-gold font-black text-base">+RM{task.reward}</span>
-                    </div>
-                ))
-             )}
-          </div>
-      )}
+                    ))
+                )}
+            </div>
+        )}
 
-      {/* 4. HISTORY LIST (My Status) */}
-      {activeTab === "history" && (
-          <div className="space-y-3">
-             {mySubmissions.length === 0 ? (
-                <p className="text-center text-gray-400 py-10 text-sm">No submissions yet.</p> 
-             ) : (
-                mySubmissions.map((sub, i) => (
-                    <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-90">
+        {/* HISTORY LIST */}
+        {activeTab === "history" && (
+            <div className="space-y-3">
+                {mySubmissions.map((sub, i) => (
+                    <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-90 relative overflow-hidden">
+                        {/* Status Update Dot */}
+                        {isNew(sub.reviewedAt, 'history') && <span className="absolute top-2 left-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>}
+                        
+                        <span className="absolute top-2 right-4 text-[10px] font-mono text-gray-300">#{sub.readableId || '---'}</span>
+
                         <div>
                             <h3 className="text-kasi-dark font-bold text-sm">{sub.taskTitle}</h3>
-                            <p className="text-xs text-gray-400 mt-1 truncate max-w-[200px]">Proof: {sub.proof}</p>
+                            <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                                <Clock size={10} /> {formatDate(sub.submittedAt)}
+                            </p>
                         </div>
-                        <div>
-                            {sub.status === 'pending' && <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"><Clock size={10}/> Review</span>}
-                            {sub.status === 'approved' && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"><CheckCircle size={10}/> Paid</span>}
-                            {sub.status === 'rejected' && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"><XCircle size={10}/> Failed</span>}
+                        
+                        <div className="text-right">
+                            <span className="block text-kasi-gold font-black text-sm mb-1">+ RM {sub.reward?.toFixed(2) || "0.00"}</span>
+                            
+                            {sub.status === 'pending' && <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Reviewing</span>}
+                            {sub.status === 'approved' && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Paid</span>}
+                            {sub.status === 'rejected' && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Rejected</span>}
                         </div>
                     </div>
-                ))
-             )}
-          </div>
-      )}
+                ))}
+            </div>
+        )}
+      </div>
 
-    </div>
-    
-    {/* 5. TASK DETAIL MODAL */}
+      {/* --- WIZARD MODAL --- */}
       {selectedTask && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
-            {/* Backdrop */}
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTask(null)}></div>
-            
-            {/* Modal Content */}
-            <div className="bg-white w-full max-w-md m-4 rounded-3xl p-6 relative z-10 animate-slide-up">
-                <button onClick={() => setSelectedTask(null)} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full">
-                    <X size={20} className="text-kasi-dark"/>
-                </button>
-
-                <div className="mb-6">
-                    <span className="bg-kasi-gold text-kasi-dark text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">{selectedTask.type}</span>
-                    <h2 className="text-2xl font-black text-kasi-dark mt-2">{selectedTask.title}</h2>
-                    <p className="text-kasi-dark font-bold text-xl mt-1 text-[#D4AF37]">Reward: RM {selectedTask.reward}</p>
+            <div className="bg-white w-full max-w-md m-4 rounded-3xl p-6 relative z-10 animate-slide-up overflow-hidden">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex gap-1">
+                        <div className={`h-1 w-8 rounded-full ${modalStep >= 1 ? "bg-kasi-gold" : "bg-gray-200"}`}></div>
+                        <div className={`h-1 w-8 rounded-full ${modalStep >= 2 ? "bg-kasi-gold" : "bg-gray-200"}`}></div>
+                        <div className={`h-1 w-8 rounded-full ${modalStep >= 3 ? "bg-kasi-gold" : "bg-gray-200"}`}></div>
+                    </div>
+                    <button onClick={() => setSelectedTask(null)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X size={20}/></button>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
-                    <h3 className="text-sm font-bold text-kasi-dark mb-2 flex items-center gap-2"><AlertCircle size={16}/> Instructions:</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{selectedTask.description}</p>
-                    <a href={selectedTask.link} target="_blank" className="block mt-4 text-center w-full bg-kasi-dark text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition">Go to Task Link</a>
-                </div>
+                {modalStep === 1 && (
+                    <div className="animate-fade-in">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4 text-kasi-gold">{getTaskIcon(selectedTask.type)}</div>
+                            <h2 className="text-2xl font-black text-kasi-dark leading-tight">{selectedTask.title}</h2>
+                            <p className="text-gray-400 text-sm mt-2">{selectedTask.type} Task</p>
+                        </div>
+                        <div className="bg-kasi-dark text-white p-4 rounded-2xl flex justify-between items-center mb-6">
+                            <span className="text-sm font-bold text-gray-400">Reward</span>
+                            <span className="text-2xl font-black text-kasi-gold">RM {selectedTask.reward}</span>
+                        </div>
+                        <button onClick={() => setModalStep(2)} className="w-full bg-kasi-gold text-kasi-dark font-black py-4 rounded-xl shadow-lg hover:shadow-xl transition active:scale-95 flex items-center justify-center gap-2">Accept Challenge <ArrowRight size={20}/></button>
+                    </div>
+                )}
 
-                <form onSubmit={handleSubmit}>
-                    <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Proof of Completion</label>
-                    <textarea 
-                        required 
-                        value={proofInput} 
-                        onChange={(e) => setProofInput(e.target.value)} 
-                        placeholder="Paste code, username, or caption here..." 
-                        className="w-full bg-white border-2 border-gray-200 focus:border-kasi-gold rounded-xl p-3 text-sm text-kasi-dark outline-none h-24 mb-3 resize-none"
-                    />
-                    <button 
-                        type="submit" 
-                        disabled={isSubmitting} 
-                        className="w-full bg-kasi-gold text-kasi-dark font-black py-4 rounded-xl shadow-lg hover:shadow-xl transition active:scale-95 disabled:opacity-70"
-                    >
-                        {isSubmitting ? "Submitting..." : "Submit Task"}
-                    </button>
-                </form>
+                {modalStep === 2 && (
+                    <div className="animate-fade-in">
+                        <h3 className="text-xl font-black text-kasi-dark mb-4">Instructions</h3>
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6 max-h-60 overflow-y-auto"><p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{selectedTask.description}</p></div>
+                        <div className="space-y-3">
+                            <button onClick={handleLinkClick} className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition border-2 ${linkClicked ? "bg-green-50 border-green-200 text-green-700" : "bg-white border-blue-100 text-blue-600 hover:bg-blue-50"}`}>{linkClicked ? <><CheckCircle size={18}/> Link Opened</> : <><ExternalLink size={18}/> Go to Task Link</>}</button>
+                            <button onClick={() => setModalStep(3)} disabled={!linkClicked} className={`w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 transition ${linkClicked ? "bg-kasi-gold text-kasi-dark shadow-lg active:scale-95" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>Next Step <ArrowRight size={20}/></button>
+                        </div>
+                    </div>
+                )}
+
+                {modalStep === 3 && (
+                    <div className="animate-fade-in">
+                        <h3 className="text-xl font-black text-kasi-dark mb-1">Submit Proof</h3>
+                        <p className="text-xs text-gray-400 mb-4">Paste the required code, username, or details.</p>
+                        <form onSubmit={handleSubmit}>
+                            <textarea required autoFocus value={proofInput} onChange={(e) => setProofInput(e.target.value)} placeholder="Example: Done liked as @username..." className="w-full bg-white border-2 border-gray-200 focus:border-kasi-gold rounded-xl p-4 text-sm text-kasi-dark outline-none h-32 mb-4 resize-none"/>
+                            <button type="submit" disabled={isSubmitting} className="w-full bg-kasi-dark text-white font-black py-4 rounded-xl shadow-lg hover:shadow-xl transition active:scale-95 disabled:opacity-70">{isSubmitting ? "Verifying..." : "Submit Task"}</button>
+                        </form>
+                    </div>
+                )}
             </div>
         </div>
       )}
-  </div>
-);
+
+    </div>
+  );
 }
