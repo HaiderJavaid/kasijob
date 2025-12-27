@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Send, Tag, DollarSign, FileText, MapPin, List, Briefcase } from "lucide-react"; 
 import { useRouter } from "next/navigation";
-import { saveJob } from "@/src/lib/jobs";
-import { getCurrentUser } from "@/src/lib/auth";
+import { saveJob } from "@/lib/jobs";
+import { getCurrentUser } from "@/lib/auth";
 
 export default function PostJobPage() {
   const router = useRouter();
