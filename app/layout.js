@@ -14,7 +14,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${inter.variable} font-sans bg-kasi-gray text-kasi-dark`}>
         {/* The Mobile Container */}
-        <main className="min-h-screen max-w-md mx-auto bg-white shadow-2xl overflow-hidden relative pb-24">
+        <main className="w-full min-h-screen"> 
           {children}
           
           {/* Add Navigation Bar Here */}

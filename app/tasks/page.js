@@ -7,7 +7,8 @@ import { getActiveTasks, submitTaskProof, getUserSubmissions } from "../../lib/t
 import { performDailyCheckIn } from "../../lib/gamification";
 import { 
   Clock, CheckCircle, XCircle, Gift, Zap, 
-  Share2, Download, MessageCircle, Star, AlertCircle, X, ExternalLink, ArrowRight, CheckSquare
+  Share2, Download, MessageCircle, Star, AlertCircle, X, ExternalLink, ArrowRight, CheckSquare,
+  Globe, Gamepad2 // New icons for partners
 } from "lucide-react";
 
 export default function TasksPage() {
@@ -22,7 +23,8 @@ export default function TasksPage() {
   const [updatesCount, setUpdatesCount] = useState(0);
 
   // UI State
-  const [activeTab, setActiveTab] = useState("available");
+  const [taskMode, setTaskMode] = useState("inhouse"); // 'inhouse' or 'partners'
+  const [activeTab, setActiveTab] = useState("available"); // 'available' or 'history'
   
   // Wizard State
   const [selectedTask, setSelectedTask] = useState(null);
@@ -36,31 +38,60 @@ export default function TasksPage() {
   // HELPER: Check if a date is NEWER than last visit
   const isNew = (firebaseTimestamp, type) => {
     if (!firebaseTimestamp) return false;
+    if (typeof window === 'undefined') return false; // SSR Safety
+
     const lastVisit = parseInt(localStorage.getItem(`kasi_last_visit_${type}`) || "0");
-    const itemTime = firebaseTimestamp.toDate ? firebaseTimestamp.toDate().getTime() : new Date(firebaseTimestamp).getTime();
+    let itemTime;
+    try {
+        if (firebaseTimestamp.toDate) {
+            itemTime = firebaseTimestamp.toDate().getTime();
+        } else if (firebaseTimestamp.seconds) {
+            itemTime = firebaseTimestamp.seconds * 1000;
+        } else {
+            itemTime = new Date(firebaseTimestamp).getTime();
+        }
+    } catch (e) { return false; }
+
     const isRecent = (Date.now() - itemTime) < (48 * 60 * 60 * 1000);
     return itemTime > lastVisit && isRecent;
   };
 
   // 1. TIMER LOGIC (Runs every second)
   useEffect(() => {
-    if (!user?.lastCheckIn) return;
-    
-    const interval = setInterval(() => {
-      const lastCheckInTime = user.lastCheckIn.toDate ? user.lastCheckIn.toDate().getTime() : new Date(user.lastCheckIn).getTime();
-      const now = new Date().getTime();
-      const distance = lastCheckInTime + (24 * 60 * 60 * 1000) - now;
+    if (!user) return; 
 
-      if (distance < 0) {
-        setTimeLeft(null); // Timer finished
-        clearInterval(interval);
-      } else {
-        const h = Math.floor((distance / (1000 * 60 * 60)) % 24);
-        const m = Math.floor((distance / (1000 * 60)) % 60);
-        const s = Math.floor((distance / 1000) % 60); // Added seconds for liveness
-        setTimeLeft(`${h}h ${m}m ${s}s`);
-      }
-    }, 1000);
+    const calculateTimeLeft = () => {
+        if (!user.lastCheckIn) {
+            if (!timeLeft) setTimeLeft(null);
+            return;
+        }
+
+        let lastCheckInTime;
+        try {
+            if (typeof user.lastCheckIn.toDate === 'function') {
+                lastCheckInTime = user.lastCheckIn.toDate().getTime();
+            } else if (user.lastCheckIn.seconds) {
+                lastCheckInTime = user.lastCheckIn.seconds * 1000;
+            } else {
+                lastCheckInTime = new Date(user.lastCheckIn).getTime();
+            }
+        } catch (e) { return; }
+
+        const now = new Date().getTime();
+        const distance = lastCheckInTime + (24 * 60 * 60 * 1000) - now;
+
+        if (distance < 0) {
+            setTimeLeft(null); 
+        } else {
+            const h = Math.floor((distance / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((distance / (1000 * 60)) % 60);
+            const s = Math.floor((distance / 1000) % 60); 
+            setTimeLeft(`${h}h ${m}m ${s}s`);
+        }
+    };
+
+    calculateTimeLeft();
+    const interval = setInterval(calculateTimeLeft, 1000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -103,15 +134,11 @@ export default function TasksPage() {
   // --- HANDLE TAB CHANGE (Clear Notification on Click) ---
   const handleTabChange = (tabName) => {
     setActiveTab(tabName);
-    
-    // Mark viewed
     localStorage.setItem(`kasi_last_visit_${tabName === 'available' ? 'available' : 'history'}`, Date.now().toString());
 
-    // Clear count visually
     if (tabName === "available") setNewTasksCount(0);
     else setUpdatesCount(0);
 
-    // Sync Navbar
     if ((tabName === "available" && updatesCount === 0) || (tabName === "history" && newTasksCount === 0)) {
        localStorage.setItem("kasi_task_alert", "false");
        window.dispatchEvent(new Event("kasi_notif_update"));
@@ -151,24 +178,19 @@ export default function TasksPage() {
     setIsSubmitting(false);
   };
 
-  // --- 3. FIXED CHECK-IN LOGIC ---
-  const handleCheckIn = async () => {
+ const handleCheckIn = async () => {
     if (!user) return;
     setCheckInLoading(true);
-    
     const result = await performDailyCheckIn(user.uid);
-    
     if (result.success) {
-      // 1. Show Success Message
       alert(`Success! RM ${result.reward.toFixed(2)} added to your wallet.`);
-      
-      // 2. Optimistically update UI (Disable button instantly)
-      // We fake a "lastCheckIn" timestamp of NOW so the timer starts immediately
-      // without waiting for the page reload.
-      setUser({ ...user, lastCheckIn: { toDate: () => new Date() } });
-      
-      // 3. Force reload to sync Balance
-      window.location.reload(); 
+      const now = new Date();
+      setTimeLeft("23h 59m 59s"); 
+      setUser(prev => ({ 
+          ...prev, 
+          lastCheckIn: { toDate: () => now }, 
+          balance: (prev.balance || 0) + result.reward 
+      }));
     } else {
       alert(result.error);
     }
@@ -198,7 +220,10 @@ export default function TasksPage() {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "Just now";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    let date;
+    try {
+        date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    } catch(e) { return "Date Error"; }
     return date.toLocaleDateString("en-MY", { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
   };
 
@@ -207,112 +232,164 @@ export default function TasksPage() {
       
       {/* HEADER */}
       <div className="bg-kasi-dark pt-8 pb-20 px-6 rounded-b-[2.5rem] shadow-lg">
-        <h1 className="text-white text-2xl font-black">Tasks</h1>
-        <p className="text-kasi-subtle text-sm">Complete tasks, earn cash.</p>
+        <h1 className="text-white text-2xl font-black">Earn Cash</h1>
+        <p className="text-kasi-subtle text-sm">Select your earning method below.</p>
       </div>
 
       <div className="px-5 -mt-12 space-y-6">
         
-        {/* CHECK-IN CARD */}
-        <div className="bg-white p-4 rounded-2xl shadow-lg flex items-center justify-between border-b-4 border-yellow-100">
-            <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${timeLeft ? "bg-gray-100 text-gray-400" : "bg-yellow-50 text-yellow-600 animate-bounce"}`}>
-                    <Gift size={24} />
-                </div>
-                <div>
-                    <h3 className="font-black text-kasi-dark text-base">Daily Bonus</h3>
-                    <p className="text-xs text-gray-400">{timeLeft ? "Come back tomorrow" : "Claim free money!"}</p>
-                </div>
-            </div>
+        {/* --- PARTNERS TOGGLE (SWITCH BETWEEN IN-HOUSE AND PARTNERS) --- */}
+        <div className="flex p-1 bg-white/10 backdrop-blur-md rounded-2xl border border-white/5 shadow-xl">
             <button 
-                onClick={handleCheckIn} 
-                disabled={!!timeLeft || checkInLoading || !user} 
-                className={`text-xs font-black px-5 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 ${timeLeft ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-kasi-gold text-kasi-dark active:scale-95"}`}
+                onClick={() => setTaskMode('inhouse')}
+                className={`flex-1 py-3 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 ${taskMode === 'inhouse' ? 'bg-kasi-gold text-kasi-dark shadow-lg scale-[1.02]' : 'text-white/60 hover:text-white'}`}
             >
-                {checkInLoading ? "..." : timeLeft ? <><Clock size={14}/> {timeLeft}</> : "Claim RM0.10"}
+                <Zap size={16} fill={taskMode === 'inhouse' ? "currentColor" : "none"} /> In-House
+            </button>
+            <button 
+                onClick={() => setTaskMode('partners')}
+                className={`flex-1 py-3 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 ${taskMode === 'partners' ? 'bg-kasi-gold text-kasi-dark shadow-lg scale-[1.02]' : 'text-white/60 hover:text-white'}`}
+            >
+                <Globe size={16} /> Partners
             </button>
         </div>
 
-        {/* TABS WITH NOTIFICATIONS */}
-        <div className="flex bg-white p-1 rounded-xl shadow-sm">
-            <button 
-                onClick={() => handleTabChange("available")} 
-                className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "available" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
-            >
-                Available
-                {newTasksCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
-            </button>
-            <button 
-                onClick={() => handleTabChange("history")} 
-                className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "history" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
-            >
-                My Status
-                {updatesCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
-            </button>
-        </div>
+        {/* --- IN-HOUSE MODE CONTENT --- */}
+        {taskMode === "inhouse" && (
+            <div className="space-y-6 animate-fade-in">
+                {/* DAILY CHECK-IN CARD */}
+                <div className="bg-white p-4 rounded-2xl shadow-lg flex items-center justify-between border-b-4 border-yellow-100">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${timeLeft ? "bg-gray-100 text-gray-400" : "bg-yellow-50 text-yellow-600 animate-bounce"}`}>
+                            <Gift size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-kasi-dark text-base">Daily Bonus</h3>
+                            <p className="text-xs text-gray-400">{timeLeft ? "Come back tomorrow" : "Claim free money!"}</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={handleCheckIn} 
+                        disabled={!!timeLeft || checkInLoading || !user} 
+                        className={`text-xs font-black px-5 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 ${timeLeft ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-kasi-gold text-kasi-dark active:scale-95"}`}
+                    >
+                        {checkInLoading ? "..." : timeLeft ? <><Clock size={14}/> {timeLeft}</> : "Claim RM0.10"}
+                    </button>
+                </div>
 
-        {/* AVAILABLE LIST */}
-        {activeTab === "available" && (
-            <div className="space-y-3">
-                {loading ? <p className="text-center text-gray-400 py-10">Loading...</p> : tasks.length === 0 ? <div className="text-center py-10 text-gray-400 text-sm">No tasks available.</div> : (
-                    tasks.map((task) => (
-                        <div key={task.id} onClick={() => openTask(task)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer active:scale-95 transition-transform relative overflow-hidden">
-                            {/* PROMINENT NEW RIBBON */}
-                            {isNew(task.createdAt, 'available') && (
-                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-md z-10 animate-pulse">
-                                    NEW!
+                {/* TABS (Available/Status) */}
+                <div className="flex bg-white p-1 rounded-xl shadow-sm">
+                    <button 
+                        onClick={() => handleTabChange("available")} 
+                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "available" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
+                    >
+                        Available
+                        {newTasksCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange("history")} 
+                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "history" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
+                    >
+                        My Status
+                        {updatesCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
+                    </button>
+                </div>
+
+                {/* LISTS */}
+                {activeTab === "available" ? (
+                    <div className="space-y-3">
+                        {loading ? <p className="text-center text-gray-400 py-10">Loading...</p> : tasks.length === 0 ? <div className="text-center py-10 text-gray-400 text-sm">No tasks available.</div> : (
+                            tasks.map((task) => (
+                                <div key={task.id} onClick={() => openTask(task)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 cursor-pointer active:scale-95 transition-transform relative overflow-hidden group">
+                                    {isNew(task.createdAt, 'available') && <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-md z-10 animate-pulse">NEW!</div>}
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100 shrink-0">{getTaskIcon(task.type)}</div>
+                                            <div>
+                                                <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{task.type}</span>
+                                                    <span className="text-[9px] font-mono text-gray-300">#{task.readableId || '---'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block text-l font-black text-kasi-gold" style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}>+RM{task.reward}</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full bg-gray-50 text-kasi-dark text-xs font-bold py-2 rounded-lg text-center group-hover:bg-kasi-dark group-hover:text-white transition-colors flex items-center justify-center gap-1">View Details <ArrowRight size={12} /></div>
                                 </div>
-                            )}
-                            
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100">{getTaskIcon(task.type)}</div>
-                                <div>
-                                    <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
-                                    <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{task.type}</span>
+                            ))
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {mySubmissions.map((sub, i) => (
+                            <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-90 relative overflow-hidden">
+                                {isNew(sub.reviewedAt, 'history') && <span className="absolute top-2 left-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>}
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-kasi-dark font-bold text-sm">{sub.taskTitle}</h3>
+                                        <span className="text-[9px] font-mono text-gray-300">#{sub.readableId || '---'}</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 flex items-center gap-1"><Clock size={10} /> {formatDate(sub.submittedAt)}</p>
+                                </div>
+                                <div className="text-right flex flex-col items-end gap-1">
+                                    <span className="block font-black text-sm text-kasi-gold" style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}>+ RM {sub.reward?.toFixed(2) || "0.00"}</span>
+                                    {sub.status === 'pending' && <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Reviewing</span>}
+                                    {sub.status === 'approved' && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Paid</span>}
+                                    {sub.status === 'rejected' && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Rejected</span>}
                                 </div>
                             </div>
-                            <span className="block text-kasi-gold font-black text-base mt-2">+RM{task.reward}</span>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 )}
             </div>
         )}
 
-        {/* HISTORY LIST */}
-        {activeTab === "history" && (
-            <div className="space-y-3">
-                {mySubmissions.map((sub, i) => (
-                    <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-90 relative overflow-hidden">
-                        {/* Status Update Dot */}
-                        {isNew(sub.reviewedAt, 'history') && <span className="absolute top-2 left-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>}
-                        
-                        <span className="absolute top-2 right-4 text-[10px] font-mono text-gray-300">#{sub.readableId || '---'}</span>
-
-                        <div>
-                            <h3 className="text-kasi-dark font-bold text-sm">{sub.taskTitle}</h3>
-                            <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                                <Clock size={10} /> {formatDate(sub.submittedAt)}
-                            </p>
-                        </div>
-                        
-                        <div className="text-right">
-                            <span className="block text-kasi-gold font-black text-sm mb-1">+ RM {sub.reward?.toFixed(2) || "0.00"}</span>
-                            
-                            {sub.status === 'pending' && <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Reviewing</span>}
-                            {sub.status === 'approved' && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Paid</span>}
-                            {sub.status === 'rejected' && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Rejected</span>}
-                        </div>
+        {/* --- PARTNERS MODE CONTENT --- */}
+        {taskMode === "partners" && (
+            <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                {/* Torox Card */}
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden">
+                    <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-bold px-2 py-1 rounded-bl-xl">HOT</div>
+                    <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Gamepad2 className="text-red-500" size={28}/>
                     </div>
-                ))}
+                    <h3 className="font-black text-kasi-dark text-sm">Torox</h3>
+                    <p className="text-[10px] text-gray-400 mb-3">Games & Apps</p>
+                    <button className="w-full bg-kasi-dark text-white text-xs font-bold py-2 rounded-lg shadow-md active:scale-95">Open Wall</button>
+                </div>
+
+                {/* BitLabs Card */}
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden">
+                    <div className="absolute top-0 right-0 bg-green-500 text-white text-[9px] font-bold px-2 py-1 rounded-bl-xl">EASY</div>
+                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Globe className="text-blue-500" size={28}/>
+                    </div>
+                    <h3 className="font-black text-kasi-dark text-sm">BitLabs</h3>
+                    <p className="text-[10px] text-gray-400 mb-3">Surveys</p>
+                    <button className="w-full bg-kasi-dark text-white text-xs font-bold py-2 rounded-lg shadow-md active:scale-95">Open Wall</button>
+                </div>
+
+                {/* CPX Research */}
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden">
+                    <div className="w-14 h-14 bg-yellow-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Star className="text-yellow-600" size={28}/>
+                    </div>
+                    <h3 className="font-black text-kasi-dark text-sm">CPX Research</h3>
+                    <p className="text-[10px] text-gray-400 mb-3">Quick Surveys</p>
+                    <button className="w-full bg-kasi-dark text-white text-xs font-bold py-2 rounded-lg shadow-md active:scale-95">Open Wall</button>
+                </div>
             </div>
         )}
       </div>
 
       {/* --- WIZARD MODAL --- */}
       {selectedTask && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTask(null)}></div>
-            <div className="bg-white w-full max-w-md m-4 rounded-3xl p-6 relative z-10 animate-slide-up overflow-hidden">
+            <div className="bg-white w-full max-w-md rounded-3xl p-6 relative z-10 animate-slide-up overflow-hidden">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex gap-1">
                         <div className={`h-1 w-8 rounded-full ${modalStep >= 1 ? "bg-kasi-gold" : "bg-gray-200"}`}></div>

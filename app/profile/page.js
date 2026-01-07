@@ -8,6 +8,7 @@ import {
   LogOut, Wallet, CreditCard, X, 
   History, Building2, CheckCircle, Clock, XCircle, Briefcase 
 } from "lucide-react"; 
+import { stringToColor, getInitials } from "../../lib/utils";
 
 // IMPORT HELPERS
 import { requestWithdrawal, getWithdrawalHistory } from "../../lib/billing"; 
@@ -109,16 +110,20 @@ export default function ProfilePage() {
 
       <div className="max-w-md mx-auto px-6 space-y-6">
         
-        {/* 2. USER INFO */}
+      {/* 2. USER INFO */}
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-full bg-kasi-gold/10 flex items-center justify-center text-2xl font-bold text-kasi-gold border-2 border-kasi-gold">
-            {(user?.name || user?.email || "U").charAt(0).toUpperCase()}
+          <div 
+            className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-black text-white border-4 border-white shadow-lg"
+            style={{ backgroundColor: stringToColor(user?.name || "U") }} // Random Color
+          >
+            {getInitials(user?.name || "User")}
           </div>
           <div>
             <h2 className="text-xl font-bold text-kasi-dark">{user?.name || "Anonymous"}</h2>
             <p className="text-kasi-subtle text-sm">{user?.email}</p>
           </div>
         </div>
+
 
         {/* 3. BALANCE CARD (Always Visible) */}
         <div className="bg-kasi-dark text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
