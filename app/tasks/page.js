@@ -227,6 +227,22 @@ export default function TasksPage() {
     return date.toLocaleDateString("en-MY", { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
   };
 
+  // --- PARTNER LINK HANDLER ---
+  const openPartnerWall = (partnerName) => {
+      // Replace these URLs/Logic with your actual integration later
+      if (partnerName === 'Torox') {
+          window.open(`https://offerwall.torox.io/?userid=${user.uid}&appid=YOUR_TOROX_APP_ID`, '_blank');
+      } else if (partnerName === 'BitLabs') {
+          window.open(`https://web.bitlabs.ai?uid=${user.uid}&token=YOUR_BITLABS_TOKEN`, '_blank');
+      } else if (partnerName === 'AdGem') {
+          window.open(`https://api.adgem.com/v1/wall?appid=YOUR_ADGEM_APP_ID&playerid=${user.uid}`, '_blank');
+      } else if (partnerName === 'CPX') {
+          window.open(`https://offers.cpx-research.com/index.php?app_id=YOUR_CPX_APP_ID&ext_user_id=${user.uid}`, '_blank');
+      } else {
+          alert(`Opening ${partnerName} Offerwall...`);
+      }
+  };
+
   return (
     <div className="min-h-screen bg-kasi-gray pb-24 relative font-sans">
       
@@ -238,8 +254,8 @@ export default function TasksPage() {
 
       <div className="px-5 -mt-12 space-y-6">
         
-        {/* --- PARTNERS TOGGLE (SWITCH BETWEEN IN-HOUSE AND PARTNERS) --- */}
-        <div className="flex p-1 bg-white/10 backdrop-blur-md rounded-2xl border border-white/5 shadow-xl">
+        {/* --- PARTNERS TOGGLE --- */}
+        <div className="flex p-1 bg-white/10 backdrop-blur-md rounded-2xl border border-white/5 shadow-xl relative z-10">
             <button 
                 onClick={() => setTaskMode('inhouse')}
                 className={`flex-1 py-3 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 ${taskMode === 'inhouse' ? 'bg-kasi-gold text-kasi-dark shadow-lg scale-[1.02]' : 'text-white/60 hover:text-white'}`}
@@ -256,102 +272,148 @@ export default function TasksPage() {
 
         {/* --- IN-HOUSE MODE CONTENT --- */}
         {taskMode === "inhouse" && (
-            <div className="space-y-6 animate-fade-in">
-                {/* DAILY CHECK-IN CARD */}
-                <div className="bg-white p-4 rounded-2xl shadow-lg flex items-center justify-between border-b-4 border-yellow-100">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${timeLeft ? "bg-gray-100 text-gray-400" : "bg-yellow-50 text-yellow-600 animate-bounce"}`}>
-                            <Gift size={24} />
-                        </div>
-                        <div>
-                            <h3 className="font-black text-kasi-dark text-base">Daily Bonus</h3>
-                            <p className="text-xs text-gray-400">{timeLeft ? "Come back tomorrow" : "Claim free money!"}</p>
-                        </div>
+          <div className="space-y-6 animate-fade-in">
+            {/* DAILY CHECK-IN CARD */}
+            <div className="bg-white p-4 rounded-2xl shadow-lg flex items-center justify-between border-b-4 border-yellow-100">
+                <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${timeLeft ? "bg-gray-100 text-gray-400" : "bg-yellow-50 text-yellow-600 animate-bounce"}`}>
+                        <Gift size={24} />
                     </div>
-                    <button 
-                        onClick={handleCheckIn} 
-                        disabled={!!timeLeft || checkInLoading || !user} 
-                        className={`text-xs font-black px-5 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 ${timeLeft ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-kasi-gold text-kasi-dark active:scale-95"}`}
-                    >
-                        {checkInLoading ? "..." : timeLeft ? <><Clock size={14}/> {timeLeft}</> : "Claim RM0.10"}
-                    </button>
+                    <div>
+                        <h3 className="font-black text-kasi-dark text-base">Daily Bonus</h3>
+                        <p className="text-xs text-gray-400">{timeLeft ? "Come back tomorrow" : "Claim free money!"}</p>
+                    </div>
                 </div>
+                
+                <button 
+                    onClick={handleCheckIn} 
+                    disabled={!!timeLeft || checkInLoading || !user} 
+                    className={`text-xs font-black px-5 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 ${timeLeft ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-kasi-gold text-kasi-dark active:scale-95"}`}
+                >
+                    {checkInLoading ? "..." : timeLeft ? <><Clock size={14}/> {timeLeft}</> : "Claim RM0.10"}
+                </button>
+            </div>
 
-                {/* TABS (Available/Status) */}
-                <div className="flex bg-white p-1 rounded-xl shadow-sm">
-                    <button 
-                        onClick={() => handleTabChange("available")} 
-                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "available" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
-                    >
-                        Available
-                        {newTasksCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
-                    </button>
-                    <button 
-                        onClick={() => handleTabChange("history")} 
-                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "history" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
-                    >
-                        My Status
-                        {updatesCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
-                    </button>
-                </div>
+            {/* TABS (Available/Status) */}
+            <div className="flex bg-white p-1 rounded-xl shadow-sm">
+                <button 
+                    onClick={() => handleTabChange("available")} 
+                    className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "available" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
+                >
+                    Available
+                    {newTasksCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
+                </button>
+                <button 
+                    onClick={() => handleTabChange("history")} 
+                    className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all relative ${activeTab === "history" ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}
+                >
+                    My Status
+                    {updatesCount > 0 && <span className="absolute top-1 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
+                </button>
+            </div>
 
-                {/* LISTS */}
-                {activeTab === "available" ? (
-                    <div className="space-y-3">
-                        {loading ? <p className="text-center text-gray-400 py-10">Loading...</p> : tasks.length === 0 ? <div className="text-center py-10 text-gray-400 text-sm">No tasks available.</div> : (
-                            tasks.map((task) => (
-                                <div key={task.id} onClick={() => openTask(task)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 cursor-pointer active:scale-95 transition-transform relative overflow-hidden group">
-                                    {isNew(task.createdAt, 'available') && <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-md z-10 animate-pulse">NEW!</div>}
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100 shrink-0">{getTaskIcon(task.type)}</div>
-                                            <div>
-                                                <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{task.type}</span>
-                                                    <span className="text-[9px] font-mono text-gray-300">#{task.readableId || '---'}</span>
-                                                </div>
+            {/* AVAILABLE LIST */}
+            {activeTab === "available" && (
+                <div className="space-y-3">
+                    {loading ? <p className="text-center text-gray-400 py-10">Loading...</p> : tasks.length === 0 ? <div className="text-center py-10 text-gray-400 text-sm">No tasks available.</div> : (
+                        tasks.map((task) => (
+                            <div 
+                                key={task.id} 
+                                onClick={() => openTask(task)} 
+                                className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 cursor-pointer active:scale-95 transition-transform relative overflow-hidden group"
+                            >
+                                {/* PROMINENT NEW RIBBON */}
+                                {isNew(task.createdAt, 'available') && (
+                                    <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-md z-10 animate-pulse">
+                                        NEW!
+                                    </div>
+                                )}
+                                
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100 shrink-0">
+                                            {getTaskIcon(task.type)}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
+                                                    {task.type}
+                                                </span>
+                                                {/* Moved ID here for subtle context */}
+                                                <span className="text-[9px] font-mono text-gray-300">#{task.readableId || '---'}</span>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className="block text-l font-black text-kasi-gold" style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}>+RM{task.reward}</span>
-                                        </div>
                                     </div>
-                                    <div className="w-full bg-gray-50 text-kasi-dark text-xs font-bold py-2 rounded-lg text-center group-hover:bg-kasi-dark group-hover:text-white transition-colors flex items-center justify-center gap-1">View Details <ArrowRight size={12} /></div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {mySubmissions.map((sub, i) => (
-                            <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-90 relative overflow-hidden">
-                                {isNew(sub.reviewedAt, 'history') && <span className="absolute top-2 left-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>}
-                                <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-kasi-dark font-bold text-sm">{sub.taskTitle}</h3>
-                                        <span className="text-[9px] font-mono text-gray-300">#{sub.readableId || '---'}</span>
+                                    
+                                {/* REWARD WITH BLACK OUTLINE EFFECT */}
+                                    <div className="text-right">
+                                        <span 
+                                            className="block text-xl font-bold text-kasi-gold drop-shadow-sm tracking-wide"
+                                            style={{ 
+                                                WebkitTextStroke: "0.8px black", 
+                                                color: "#FFD700" 
+                                            }}
+                                        >
+                                            +RM{task.reward}
+                                        </span>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 flex items-center gap-1"><Clock size={10} /> {formatDate(sub.submittedAt)}</p>
                                 </div>
-                                <div className="text-right flex flex-col items-end gap-1">
-                                    <span className="block font-black text-sm text-kasi-gold" style={{ textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" }}>+ RM {sub.reward?.toFixed(2) || "0.00"}</span>
-                                    {sub.status === 'pending' && <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Reviewing</span>}
-                                    {sub.status === 'approved' && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Paid</span>}
-                                    {sub.status === 'rejected' && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Rejected</span>}
+                                {/* "VIEW TASK" BUTTON */}
+                                <div className="w-full bg-gray-50 text-kasi-dark text-xs font-bold py-2 rounded-lg text-center group-hover:bg-kasi-dark group-hover:text-white transition-colors flex items-center justify-center gap-1">
+                                    View Details <ArrowRight size={12} />
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+                        ))
+                    )}
+                </div>
+            )}
+
+            {/* HISTORY LIST */}
+            {activeTab === "history" && (
+                <div className="space-y-3">
+                    {mySubmissions.map((sub, i) => (
+                        <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-90 relative overflow-hidden">
+                            {/* Status Update Dot */}
+                            {isNew(sub.reviewedAt, 'history') && <span className="absolute top-2 left-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>}
+                            
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-kasi-dark font-bold text-sm">{sub.taskTitle}</h3>
+                                    <span className="text-[9px] font-mono text-gray-300">#{sub.readableId || '---'}</span>
+                                </div>
+                                <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                                    <Clock size={10} /> {formatDate(sub.submittedAt)}
+                                </p>
+                            </div>
+                            
+                            <div className="text-right flex flex-col items-end gap-1">
+                                <span 
+                                    className="block font-bold text-sm text-kasi-gold tracking-wide"
+                                    style={{ 
+                                        WebkitTextStroke: "0.5px black", 
+                                        color: "#FFD700"
+                                    }}
+                                >
+                                    + RM {sub.reward?.toFixed(2) || "0.00"}
+                                </span>
+                                
+                                {sub.status === 'pending' && <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Reviewing</span>}
+                                {sub.status === 'approved' && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Paid</span>}
+                                {sub.status === 'rejected' && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full inline-block">Rejected</span>}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+          </div>
         )}
 
         {/* --- PARTNERS MODE CONTENT --- */}
         {taskMode === "partners" && (
             <div className="grid grid-cols-2 gap-4 animate-fade-in">
                 {/* Torox Card */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden" onClick={() => openPartnerWall('Torox')}>
                     <div className="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-bold px-2 py-1 rounded-bl-xl">HOT</div>
                     <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                         <Gamepad2 className="text-red-500" size={28}/>
@@ -362,7 +424,7 @@ export default function TasksPage() {
                 </div>
 
                 {/* BitLabs Card */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden" onClick={() => openPartnerWall('BitLabs')}>
                     <div className="absolute top-0 right-0 bg-green-500 text-white text-[9px] font-bold px-2 py-1 rounded-bl-xl">EASY</div>
                     <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                         <Globe className="text-blue-500" size={28}/>
@@ -372,8 +434,18 @@ export default function TasksPage() {
                     <button className="w-full bg-kasi-dark text-white text-xs font-bold py-2 rounded-lg shadow-md active:scale-95">Open Wall</button>
                 </div>
 
+                {/* AdGem Card */}
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden" onClick={() => openPartnerWall('AdGem')}>
+                    <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <Gift className="text-purple-600" size={28}/>
+                    </div>
+                    <h3 className="font-black text-kasi-dark text-sm">AdGem</h3>
+                    <p className="text-[10px] text-gray-400 mb-3">High Reward</p>
+                    <button className="w-full bg-kasi-dark text-white text-xs font-bold py-2 rounded-lg shadow-md active:scale-95">Open Wall</button>
+                </div>
+
                 {/* CPX Research */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-kasi-gold transition group cursor-pointer relative overflow-hidden" onClick={() => openPartnerWall('CPX')}>
                     <div className="w-14 h-14 bg-yellow-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                         <Star className="text-yellow-600" size={28}/>
                     </div>
@@ -385,11 +457,11 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* --- WIZARD MODAL --- */}
+      {/* --- WIZARD MODAL (Steps 1-3) --- */}
       {selectedTask && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTask(null)}></div>
-            <div className="bg-white w-full max-w-md rounded-3xl p-6 relative z-10 animate-slide-up overflow-hidden">
+            <div className="bg-white w-full max-w-md m-4 rounded-3xl p-6 relative z-10 animate-slide-up overflow-hidden">
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex gap-1">
                         <div className={`h-1 w-8 rounded-full ${modalStep >= 1 ? "bg-kasi-gold" : "bg-gray-200"}`}></div>
