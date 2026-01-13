@@ -1,7 +1,8 @@
 "use client";
+// 1. Force dynamic rendering
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation"; 
 import { getCurrentUser } from "../../lib/auth"; 
 import { getActiveTasks, submitTaskProof } from "../../lib/tasks"; 
@@ -17,7 +18,8 @@ import {
   Instagram, Facebook, Youtube, Twitter, Music2 
 } from "lucide-react";
 
-export default function TasksPage() {
+// 2. Logic moved to separate component
+function TasksContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState(null);
@@ -149,10 +151,7 @@ export default function TasksPage() {
             setTasks(allTasks);
 
             // --- AUTOPLAY CHECK ---
-            // We check local storage for this specific User ID.
             const seenTutorial = localStorage.getItem(`kasi_tutorial_seen_${authUser.uid}`);
-            
-            // If they have NOT seen it, and there are tasks available (so it doesn't break), Run it.
             if (!seenTutorial && allTasks.length > 0) {
                setRunTutorial(true);
             }
@@ -186,8 +185,6 @@ export default function TasksPage() {
           setSelectedTask(null);
           localStorage.setItem('kasi_tour_progress', 'profile_pending'); // Legacy flag if needed
           
-          // --- MARK AS SEEN HERE ---
-          // This ensures it only stops autoplaying if they actually finish the flow.
           if(user) {
               localStorage.setItem(`kasi_tutorial_seen_${user.uid}`, 'true');
           }
@@ -406,5 +403,14 @@ export default function TasksPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// 3. MAIN EXPORT WRAPPED IN SUSPENSE (This fixes Netlify Build)
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-kasi-gray flex items-center justify-center">Loading Tasks...</div>}>
+      <TasksContent />
+    </Suspense>
   );
 }
