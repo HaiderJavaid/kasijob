@@ -1,5 +1,4 @@
 "use client";
-// 1. Force dynamic rendering
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, Suspense } from "react";
@@ -18,7 +17,6 @@ import {
   Instagram, Facebook, Youtube, Twitter, Music2 
 } from "lucide-react";
 
-// 2. Logic moved to separate component
 function TasksContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -131,7 +129,7 @@ function TasksContent() {
       return <span className="bg-red-50 text-red-600 text-[10px] font-black px-2 py-1 rounded flex items-center gap-1 animate-pulse"><Clock size={10}/> {hours}h left</span>;
   };
 
- // 3. INITIAL DATA LOAD (FIXED SCOPE)
+  // 3. INITIAL DATA LOAD (CRASH FIX INCLUDED)
   useEffect(() => {
     const initData = async () => {
       try {
@@ -141,20 +139,19 @@ function TasksContent() {
             const userRef = doc(db, "users", authUser.uid);
             const userSnap = await getDoc(userRef);
             
-            // FIX: Define userData in the outer scope so it's always available
+            // Fix: Define userData here
             let userData = { ...authUser }; 
 
             if (userSnap.exists()) {
                 userData = { ...authUser, ...userSnap.data() };
             }
             
-            setUser(userData); // Update State
+            setUser(userData); 
             
             const allTasks = await getActiveTasks();
             setTasks(allTasks);
 
-            // --- AUTOPLAY CHECK (DB BASED) ---
-            // Now userData is guaranteed to exist
+            // Fix: Check userData, not user
             if (!userData.hasSeenMainTutorial && allTasks.length > 0) {
                setRunTutorial(true);
             }
@@ -164,7 +161,7 @@ function TasksContent() {
     initData();
   }, []);
 
-  // 4. TUTORIAL STEP LOGIC (UPDATED)
+  // 4. TUTORIAL STEP LOGIC
   const handleTutorialStepChange = async (nextIndex) => {
       setRunTutorial(false);
       
@@ -175,7 +172,6 @@ function TasksContent() {
       if (nextIndex === 4) setModalStep(2);
       if (nextIndex === 7) setModalStep(3);
 
-      // FINISH: SAVE TO FIREBASE
       if (nextIndex === 8) {
           setSelectedTask(null);
           localStorage.setItem('kasi_tour_progress', 'profile_pending'); 
@@ -206,7 +202,6 @@ function TasksContent() {
       setProofInput(""); 
       setProofFileKey(null); 
 
-      // IF USER CLICKS TASK MANUALLY DURING TUTORIAL, ADVANCE IT
       if (runTutorial && tutorialStepIndex === 2) {
           handleTutorialStepChange(3);
       }
@@ -329,10 +324,13 @@ function TasksContent() {
         )}
       </div>
 
-      {/* --- WIZARD MODAL --- */}
+      {/* --- WIZARD MODAL (ORIGINAL LAYOUT + Z-INDEX FIX) --- */}
       {selectedTask && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        // FIX: z-[9999] makes it sit ON TOP of the navbar
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !runTutorial && setSelectedTask(null)}></div>
+            
+            {/* Original Layout: max-h-[90vh], normal overflow */}
             <div className="bg-white w-full max-w-md rounded-3xl p-6 relative z-10 animate-slide-up max-h-[90vh] flex flex-col">
                 <div className="flex justify-between items-center mb-6 shrink-0">
                     <div className="flex gap-1">
@@ -401,7 +399,7 @@ function TasksContent() {
   );
 }
 
-// 3. MAIN EXPORT WRAPPED IN SUSPENSE (This fixes Netlify Build)
+// 3. MAIN EXPORT WRAPPED IN SUSPENSE
 export default function TasksPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-kasi-gray flex items-center justify-center">Loading Tasks...</div>}>
