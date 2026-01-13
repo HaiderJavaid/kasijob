@@ -9,7 +9,7 @@ import { getActiveTasks, submitTaskProof } from "../../lib/tasks";
 import AppTutorial from "../../components/AppTutorial"; 
 import StreakBoard from "../../components/StreakBoard"; 
 import { db } from "../../lib/firebase"; 
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 import { 
   Clock, Zap, Globe, Download, Share2, Star, Gift, 
@@ -150,9 +150,9 @@ function TasksContent() {
             const allTasks = await getActiveTasks();
             setTasks(allTasks);
 
-            // --- AUTOPLAY CHECK ---
-            const seenTutorial = localStorage.getItem(`kasi_tutorial_seen_${authUser.uid}`);
-            if (!seenTutorial && allTasks.length > 0) {
+        // --- AUTOPLAY CHECK (DB BASED) ---
+            // Only run if DB field is missing AND tasks exist
+            if (!userData.hasSeenMainTutorial && allTasks.length > 0) {
                setRunTutorial(true);
             }
         }
@@ -161,42 +161,34 @@ function TasksContent() {
     initData();
   }, []);
 
-  // 4. TUTORIAL STEP LOGIC
+  // 4. TUTORIAL STEP LOGIC (UPDATED)
   const handleTutorialStepChange = async (nextIndex) => {
       setRunTutorial(false);
       
-      // Step 2 -> 3: Opening Task
       if (nextIndex === 3 && !selectedTask && tasks.length > 0) {
           const targetTask = tasks.find(t => t.tags?.includes('tutorial')) || tasks[0];
-          if(targetTask) {
-              setSelectedTask(targetTask);
-              setModalStep(1);
-          }
+          if(targetTask) { setSelectedTask(targetTask); setModalStep(1); }
       }
-
-      // Step 3 -> 4: Moving to Instructions
       if (nextIndex === 4) setModalStep(2);
-
-      // Step 6 -> 7: Moving to Proof
       if (nextIndex === 7) setModalStep(3);
 
-      // Step 8: FINISH (This is where we mark it as seen)
+      // FINISH: SAVE TO FIREBASE
       if (nextIndex === 8) {
           setSelectedTask(null);
-          localStorage.setItem('kasi_tour_progress', 'profile_pending'); // Legacy flag if needed
+          localStorage.setItem('kasi_tour_progress', 'profile_pending'); 
           
-          if(user) {
-              localStorage.setItem(`kasi_tutorial_seen_${user.uid}`, 'true');
+          if(user?.uid) {
+              try {
+                  const userRef = doc(db, "users", user.uid);
+                  await updateDoc(userRef, { hasSeenMainTutorial: true });
+              } catch(e) { console.error("Error saving tutorial status", e); }
           }
       }
 
-      // 800ms Delay to allow Modal animations to finish before the tooltip finds the target
       await new Promise(r => setTimeout(r, 800));
-      
       setTutorialStepIndex(nextIndex);
       setRunTutorial(true);
   };
-
   const handleTutorialComplete = () => setRunTutorial(false);
 
   // --- ACTIONS ---
