@@ -70,8 +70,9 @@ export default function BottomNav() {
     };
   }, [pathname]);
 
-  const hiddenRoutes = ["/", "/login", "/register", "/admin/tasks", "/admin/reviews"];
-  if (hiddenRoutes.includes(pathname)) return null;
+ if (pathname.startsWith("/admin") || ["/", "/login", "/register"].includes(pathname)) {
+      return null;
+  }
 
   const isActive = (path) => pathname === path;
 
@@ -106,7 +107,7 @@ export default function BottomNav() {
         </Link>
 
         {/* LEADERBOARD TAB */}
-        <Link href="/leaderboard" className="flex flex-col items-center gap-1 group relative">
+        <Link href="/leaderboard" className="flex flex-col items-center gap-1 group relative nav-item-leaderboard">
           <div className={`p-2 rounded-full transition-all duration-300 ${isActive('/leaderboard') ? 'bg-kasi-gold text-kasi-dark' : 'text-gray-400 group-hover:text-white'}`}>
             <Trophy size={20} strokeWidth={2.5} />
           </div>
@@ -116,9 +117,10 @@ export default function BottomNav() {
         </Link>
 
         {/* PROFILE TAB */}
-        <Link href="/profile" className="flex flex-col items-center gap-1 group relative">
+        <Link href="/profile" className="flex flex-col items-center gap-1 group relative tutorial-profile-link nav-item-profile">
           <div className={`p-2 rounded-full transition-all duration-300 ${isActive('/profile') ? 'bg-kasi-gold text-kasi-dark' : 'text-gray-400 group-hover:text-white'}`}>
             <User size={20} strokeWidth={2.5} />
+            
           </div>
           <span className={`text-[10px] font-medium ${isActive('/profile') ? 'text-kasi-gold' : 'text-gray-500'}`}>
             Profile

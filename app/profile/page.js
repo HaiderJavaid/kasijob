@@ -1,36 +1,100 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { auth, db } from "../../lib/firebase"; 
 import { doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { 
-  LogOut, Wallet, CreditCard, X, 
-  History, Building2, CheckCircle, Clock, XCircle, Briefcase 
+  LogOut, Wallet, CreditCard, X, CheckCircle, Info, ShieldCheck, Briefcase, Clock
 } from "lucide-react"; 
-import { stringToColor, getInitials } from "../../lib/utils";
+import AvatarUpload from '@/components/AvatarUpload';
+import AppTutorial from "../../components/AppTutorial"; 
 
-// IMPORT HELPERS
-import { requestWithdrawal, getWithdrawalHistory } from "../../lib/billing"; 
-import { getUserSubmissions } from "../../lib/tasks"; // <--- NEW IMPORT
+import { getWalletStats, saveBankDetails } from "../../lib/billing"; 
+import { getUserSubmissions } from "../../lib/tasks"; 
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
   // DATA STATE
-  const [withdrawals, setWithdrawals] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [updatesCount, setUpdatesCount] = useState(0); 
+  
+  // WALLET STATE
+  const [payableAmount, setPayableAmount] = useState(0);
+  const [holdAmount, setHoldAmount] = useState(0);
   
   // UI STATE
-  const [activeTab, setActiveTab] = useState("wallet"); // 'wallet', 'tasks', 'jobs'
-  const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState(50);
-  const [withdrawMethod, setWithdrawMethod] = useState("TNG");
-  const [bankDetails, setBankDetails] = useState({ name: "", account: "", bankName: "Maybank" });
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState("tasks"); 
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankDetails, setBankDetails] = useState({ 
+    bankName: "Maybank", 
+    accountNumber: "", 
+    holderName: "" 
+  });
+  const [isSavingBank, setIsSavingBank] = useState(false);
 
+  // TUTORIAL STATE
+  const [runProfileTour, setRunProfileTour] = useState(false);
+
+  const profileSteps = [
+    {
+        target: '.tutorial-balance',
+        content: 'This is your wallet. We automatically pay you on the 5th of every month!',
+        disableBeacon: true,
+        placement: 'bottom',
+    },
+    {
+        target: '.tutorial-bank',
+        content: 'Important: Click here to add your Bank or TNG details so you can receive money.',
+        placement: 'bottom',
+    },
+    {
+        target: '.nav-item-leaderboard', // We will ask them to click Rank next
+        content: 'Almost done! Click the Leaderboard to see how to earn a 100% Bonus.',
+        placement: 'top',
+        hideFooter: true, // Force them to click the nav item
+        spotlightClicks: true,
+    }
+  ];
+
+  // --- TUTORIAL HANDLERS ---
+  // --- BRIDGE LOGIC ---
+  const handleProfileStepChange = (index) => {
+      // If we are on the step pointing to Leaderboard (Index 2)
+      if (index === 2) {
+          // Set the flag so the next page knows to start
+          localStorage.setItem('kasi_tour_progress', 'leaderboard_pending');
+      }
+  };
+
+  const handleTourFinish = () => {
+      setRunProfileTour(false);
+  };
+
+useEffect(() => {
+     // 1. Check URL param (Auto-redirect)
+     if (searchParams.get('tour') === 'true') {
+         // FIX: Add delay for Navbar to load
+         setTimeout(() => setRunProfileTour(true), 1000);
+     }
+     
+     // 2. Check Manual Navigation (From Tasks Page)
+     const progress = localStorage.getItem('kasi_tour_progress');
+     
+     // FIX: Check for 'profile_pending', NOT 'leaderboard_pending'
+     if (progress === 'profile_pending') {
+         // FIX: Add delay here too
+         setTimeout(() => setRunProfileTour(true), 1000);
+         localStorage.removeItem('kasi_tour_progress'); 
+     }
+  }, [searchParams]);
+
+  // --- DATA LOADING ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
@@ -38,20 +102,27 @@ export default function ProfilePage() {
         return;
       }
       try {
-        // 1. Get User Data
         const docRef = doc(db, "users", currentUser.uid);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-          setUser(docSnap.data());
-          
-          // 2. Get Withdrawals
-          const wHistory = await getWithdrawalHistory(currentUser.uid);
-          setWithdrawals(wHistory);
+          const userData = docSnap.data();
+          setUser(userData);
+          if (userData.bankDetails) setBankDetails(userData.bankDetails);
 
-          // 3. Get Task History
+          // Get Wallet Stats
+          const currentBalance = userData.balance || 0;
+          const stats = await getWalletStats(currentUser.uid, currentBalance);
+          setPayableAmount(stats.payable);
+          setHoldAmount(stats.hold);
+
+          // Get Task History
           const tHistory = await getUserSubmissions(currentUser.uid);
           setTasks(tHistory);
+
+          // Calculate Updates (Red Dot)
+          const newUpdates = tHistory.filter(t => t.status === 'approved' || t.status === 'rejected').length;
+          setUpdatesCount(newUpdates);
 
         } else {
           setUser({ email: currentUser.email, name: "User", uid: currentUser.uid, balance: 0 });
@@ -65,31 +136,19 @@ export default function ProfilePage() {
     return () => unsubscribe();
   }, [router]);
 
-  // --- WITHDRAWAL LOGIC ---
-  const handleWithdraw = async (e) => {
+  const handleSaveBank = async (e) => {
     e.preventDefault();
-    setIsProcessing(true);
-
-    const result = await requestWithdrawal(
-        user.uid, 
-        withdrawAmount, 
-        withdrawMethod, 
-        {
-            accountName: bankDetails.name,
-            accountNumber: bankDetails.account,
-            bankName: withdrawMethod === "BANK" ? bankDetails.bankName : "Touch 'n Go"
-        }
-    );
-
-    if (result.success) {
-        alert("Withdrawal requested!");
-        setShowWithdraw(false);
-        setUser(prev => ({ ...prev, balance: prev.balance - withdrawAmount }));
-        window.location.reload(); 
-    } else {
-        alert("Failed: " + result.error);
+    setIsSavingBank(true);
+    try {
+        await saveBankDetails(user.uid, bankDetails);
+        alert("Payment details updated successfully!");
+        setShowBankModal(false);
+        setUser(prev => ({ ...prev, bankDetails }));
+    } catch (error) {
+        alert("Error: " + error.message);
+    } finally {
+        setIsSavingBank(false);
     }
-    setIsProcessing(false);
   };
 
   if (loading) return <div className="min-h-screen bg-kasi-gray flex items-center justify-center">Loading...</div>;
@@ -97,8 +156,9 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-kasi-gray text-gray-900 pb-24 font-sans">
+       <AppTutorial run={runProfileTour} steps={profileSteps} onComplete={handleTourFinish} onStepChange={handleProfileStepChange} />
       
-      {/* 1. TOP HEADER */}
+      {/* HEADER */}
       <div className="bg-white px-6 py-6 sticky top-0 z-20 shadow-sm mb-6">
         <div className="flex justify-between items-center max-w-md mx-auto">
           <h1 className="text-2xl font-black text-kasi-dark">Profile</h1>
@@ -110,91 +170,98 @@ export default function ProfilePage() {
 
       <div className="max-w-md mx-auto px-6 space-y-6">
         
-      {/* 2. USER INFO */}
+        {/* USER INFO */}
         <div className="flex items-center space-x-4">
-          <div 
-            className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-black text-white border-4 border-white shadow-lg"
-            style={{ backgroundColor: stringToColor(user?.name || "U") }} // Random Color
-          >
-            {getInitials(user?.name || "User")}
-          </div>
+          <AvatarUpload 
+            user={user} 
+            onUpdate={(updates) => setUser({ ...user, ...updates })} 
+          />
           <div>
-            <h2 className="text-xl font-bold text-kasi-dark">{user?.name || "Anonymous"}</h2>
+            <h2 className="text-xl font-bold text-kasi-dark">
+                {user?.name || user?.email?.split('@')[0] || "Anonymous"}
+            </h2>
             <p className="text-kasi-subtle text-sm">{user?.email}</p>
           </div>
         </div>
 
+        {/* BALANCE CARD */}
+        <div className="bg-kasi-dark text-white p-6 rounded-3xl shadow-lg relative overflow-hidden tutorial-balance">
+            {/* --- NEW: HISTORY BUTTON (Top Right) --- */}
+    <button 
+        onClick={() => router.push('/wallet/history')} 
+        className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition z-10"
+    >
+        <Clock size={18} />
+    </button>
+    {/* --------------------------------------- */}
 
-        {/* 3. BALANCE CARD (Always Visible) */}
-        <div className="bg-kasi-dark text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
+    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Wallet size={80} /></div>
             <div className="absolute top-0 right-0 p-4 opacity-10"><Wallet size={80} /></div>
-            <p className="text-gray-400 text-xs font-bold uppercase">Current Balance</p>
+            
+            <p className="text-gray-400 text-xs font-bold uppercase">Total Earnings</p>
             <p className="text-4xl font-black mt-2 text-kasi-gold">RM {user?.balance?.toFixed(2) || "0.00"}</p>
             
+            <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-700">
+                <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Payable (5th)</p>
+                    <p className="text-xl font-bold text-white">RM {payableAmount.toFixed(2)}</p>
+                </div>
+                <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1 flex items-center gap-1">On Hold <Info size={10}/></p>
+                    <p className="text-xl font-bold text-white opacity-80">RM {holdAmount.toFixed(2)}</p>
+                </div>
+            </div>
+
             <button 
-                onClick={() => setShowWithdraw(true)}
-                className="mt-6 w-full bg-white text-kasi-dark font-bold py-3 rounded-xl hover:bg-gray-200 transition flex items-center justify-center gap-2"
+                onClick={() => setShowBankModal(true)}
+                className={`mt-4 w-full py-3 rounded-xl transition flex items-center justify-center gap-2 font-bold text-sm tutorial-bank ${
+                    user.bankDetails ? "bg-gray-800 text-white hover:bg-gray-700" : "bg-white text-kasi-dark hover:bg-gray-200"
+                }`}
             >
-                <CreditCard size={18}/> Withdraw Funds
+                {user.bankDetails ? (
+                    <><CheckCircle size={16} className="text-green-400"/> {user.bankDetails.bankName} Linked</>
+                ) : (
+                    <><CreditCard size={16}/> Add Bank / TNG</>
+                )}
             </button>
+            <p className="text-[10px] text-center text-gray-500 mt-3">*Earnings after the 25th are held until next month.</p>
         </div>
 
-        {/* 4. TABS NAVIGATION */}
+        {/* ADMIN BUTTON */}
+        {user?.role === 'admin' && (
+            <button 
+                onClick={() => router.push('/admin')}
+                className="w-full bg-red-600 text-white font-black py-4 rounded-xl shadow-lg shadow-red-200 mt-4 flex items-center justify-center gap-2 hover:bg-red-700 transition"
+            >
+                <ShieldCheck size={20} /> Access Admin Dashboard
+            </button>
+        )}
+
+        {/* TABS NAVIGATION */}
         <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
-            {['wallet', 'tasks', 'jobs'].map((tab) => (
+            {['tasks', 'jobs'].map((tab) => (
                 <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg capitalize transition-all ${
+                    className={`relative flex-1 py-2 text-xs font-bold rounded-lg capitalize transition-all ${
                         activeTab === tab 
                         ? "bg-kasi-gold text-kasi-dark shadow-sm" 
                         : "text-gray-400 hover:bg-gray-50"
                     }`}
                 >
-                    {tab === 'wallet' ? 'Withdrawals' : tab}
+                    {tab} History
+                    {/* The Red Dot Logic */}
+                    {tab === 'tasks' && updatesCount > 0 && (
+                       <span className="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-white"></span>
+                    )}
                 </button>
             ))}
         </div>
 
-        {/* 5. TAB CONTENT */}
+        {/* TAB CONTENT */}
         <div className="min-h-[200px]">
-            
-            {/* TAB: WALLET HISTORY */}
-            {activeTab === 'wallet' && (
-                <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction History</h3>
-                    {withdrawals.length === 0 ? (
-                        <p className="text-center text-gray-400 text-sm py-4">No withdrawals yet.</p>
-                    ) : (
-                        withdrawals.map((tx, i) => (
-                            <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-                                <div>
-                                    <p className="font-bold text-sm text-kasi-dark">
-                                        {tx.method === 'TNG' ? "Touch 'n Go" : tx.details.bankName}
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                        {new Date(tx.requestedAt.seconds * 1000).toLocaleDateString()}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-black text-kasi-dark">- RM {tx.amount}</p>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                        tx.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                        tx.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                    }`}>
-                                        {tx.status.toUpperCase()}
-                                    </span>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            )}
-
-            {/* TAB: TASK HISTORY */}
             {activeTab === 'tasks' && (
                 <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">My Task Submissions</h3>
                     {tasks.length === 0 ? (
                         <p className="text-center text-gray-400 text-sm py-4">No tasks completed yet.</p>
                     ) : (
@@ -202,14 +269,14 @@ export default function ProfilePage() {
                             <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
                                 <div>
                                     <p className="font-bold text-sm text-kasi-dark line-clamp-1">{task.taskTitle}</p>
-                                    <p className="text-xs text-gray-400">Proof: {task.proof?.substring(0, 15)}...</p>
+                                    <p className="text-xs text-gray-400">Proof: {task.proof?.includes('proofs/') ? 'Image' : 'Text'}</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="font-bold text-kasi-gold">+ RM {task.reward?.toFixed(2)}</p>
                                     <div className="flex justify-end mt-1">
-                                        {task.status === 'pending' && <Clock size={14} className="text-yellow-500"/>}
-                                        {task.status === 'approved' && <CheckCircle size={14} className="text-green-500"/>}
-                                        {task.status === 'rejected' && <XCircle size={14} className="text-red-500"/>}
+                                        {task.status === 'pending' && <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold">Reviewing</span>}
+                                        {task.status === 'approved' && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Approved</span>}
+                                        {task.status === 'rejected' && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">Rejected</span>}
                                     </div>
                                 </div>
                             </div>
@@ -218,42 +285,51 @@ export default function ProfilePage() {
                 </div>
             )}
 
-            {/* TAB: JOB HISTORY (Future) */}
             {activeTab === 'jobs' && (
                 <div className="text-center py-10 bg-white rounded-3xl border border-dashed border-gray-200">
                     <Briefcase size={32} className="mx-auto text-gray-300 mb-2"/>
-                    <h3 className="font-bold text-gray-400">Coming Soon</h3>
-                    <p className="text-xs text-gray-400 max-w-[200px] mx-auto mt-1">
-                        You will soon be able to apply for full-time & part-time jobs here.
-                    </p>
+                    <h3 className="font-bold text-gray-400">No Jobs Yet</h3>
+                    <p className="text-xs text-gray-400 max-w-[200px] mx-auto mt-1">Applied jobs will appear here.</p>
                 </div>
             )}
-
         </div>
       </div>
 
-      {/* WITHDRAWAL MODAL (Same as before) */}
-      {showWithdraw && (
+      {/* BANK DETAILS MODAL */}
+      {showBankModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowWithdraw(false)}></div>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowBankModal(false)}></div>
             <div className="bg-white w-full max-w-md m-4 rounded-3xl p-6 relative z-10 animate-slide-up">
-                <button onClick={() => setShowWithdraw(false)} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full"><X size={20} className="text-kasi-dark"/></button>
-                <h2 className="text-2xl font-black text-kasi-dark mb-1">Withdraw Money</h2>
-                <p className="text-sm text-gray-500 mb-6">Minimum withdrawal is RM 30.00</p>
-                <form onSubmit={handleWithdraw} className="space-y-4">
+                <button onClick={() => setShowBankModal(false)} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full"><X size={20} className="text-kasi-dark"/></button>
+                <h2 className="text-2xl font-black text-kasi-dark mb-1">Payment Settings</h2>
+                <p className="text-sm text-gray-500 mb-6">Enter where you want to receive your monthly earnings.</p>
+                
+                <form onSubmit={handleSaveBank} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Amount (RM)</label>
-                        <input type="number" min="30" step="0.01" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-lg font-bold text-kasi-dark outline-none focus:border-kasi-gold" />
+                        <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Bank / E-Wallet</label>
+                        <select 
+                            value={bankDetails.bankName} 
+                            onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
+                            className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-sm font-bold text-kasi-dark outline-none focus:border-kasi-gold"
+                        >
+                            <option value="Maybank">Maybank</option>
+                            <option value="CIMB">CIMB Bank</option>
+                            <option value="Public Bank">Public Bank</option>
+                            <option value="TNG">Touch 'n Go E-Wallet</option>
+                            <option value="Hong Leong">Hong Leong Bank</option>
+                            <option value="RHB">RHB Bank</option>
+                        </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <button type="button" onClick={() => setWithdrawMethod("TNG")} className={`p-3 rounded-xl border-2 font-bold text-sm flex flex-col items-center gap-2 ${withdrawMethod === "TNG" ? "border-kasi-gold bg-yellow-50 text-kasi-dark" : "border-gray-200 text-gray-400"}`}><Wallet size={24}/> Touch 'n Go</button>
-                        <button type="button" onClick={() => setWithdrawMethod("BANK")} className={`p-3 rounded-xl border-2 font-bold text-sm flex flex-col items-center gap-2 ${withdrawMethod === "BANK" ? "border-kasi-gold bg-yellow-50 text-kasi-dark" : "border-gray-200 text-gray-400"}`}><Building2 size={24}/> Bank Transfer</button>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Account Number / Phone</label>
+                        <input required type="text" placeholder="e.g. 1122334455" value={bankDetails.accountNumber} onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-sm font-bold text-kasi-dark outline-none focus:border-kasi-gold" />
                     </div>
-                    <div className="space-y-3 pt-2">
-                        <input required placeholder="Full Name" value={bankDetails.name} onChange={(e) => setBankDetails({...bankDetails, name: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-kasi-gold" />
-                        <input required placeholder={withdrawMethod === "TNG" ? "Phone Number" : "Account Number"} value={bankDetails.account} onChange={(e) => setBankDetails({...bankDetails, account: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-kasi-gold" />
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Account Holder Name</label>
+                        <input required type="text" placeholder="Must match your KasiJobs name" value={bankDetails.holderName} onChange={(e) => setBankDetails({...bankDetails, holderName: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-sm font-bold text-kasi-dark outline-none focus:border-kasi-gold" />
                     </div>
-                    <button type="submit" disabled={isProcessing} className="w-full bg-kasi-dark text-white font-bold py-4 rounded-xl shadow-lg mt-4 disabled:opacity-70 hover:bg-gray-800 transition">{isProcessing ? "Processing..." : "Confirm Withdrawal"}</button>
+                    <button type="submit" disabled={isSavingBank} className="w-full bg-kasi-dark text-white font-bold py-4 rounded-xl shadow-lg mt-2 disabled:opacity-70 hover:bg-gray-800 transition">{isSavingBank ? "Saving..." : "Save Payment Details"}</button>
+                    <p className="text-[10px] text-center text-gray-400 mt-2">Next Auto-Payout: <b>5th of Next Month</b></p>
                 </form>
             </div>
         </div>

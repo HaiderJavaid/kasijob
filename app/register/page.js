@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User, Mail, Lock, ArrowRight, CheckCircle, Eye, EyeOff, Calendar, Users } from "lucide-react";
+import { ArrowLeft, User, Mail, Lock, ArrowRight, CheckCircle, Eye, Calendar, Users } from "lucide-react";
 import { registerUser } from "../../lib/auth"; 
 
 export default function RegisterPage() {
@@ -11,10 +11,10 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // Form State
+  // Form State (Updated age -> dob)
   const [formData, setFormData] = useState({
     name: "",
-    age: "",
+    dob: "", // Changed from age
     gender: "male",
     email: "",
     password: "",
@@ -30,7 +30,8 @@ export default function RegisterPage() {
   const handleNextStep = (e) => {
     e.preventDefault();
     if (step === 1) {
-        if (!formData.name || !formData.age) return alert("Please fill in all fields.");
+        // Validation check
+        if (!formData.name || !formData.dob) return alert("Please fill in all fields.");
         setStep(2);
     } else if (step === 2) {
         if (!formData.email || !formData.password || !formData.confirmPassword) return alert("Please fill in all fields.");
@@ -46,12 +47,19 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
-      // Pass extra data (age/gender) if your registerUser supports it, or save separately
-      const result = await registerUser(formData.email, formData.password, formData.name);
+      // Pass dob and gender to the new auth function
+      const result = await registerUser(
+          formData.email, 
+          formData.password, 
+          formData.name, 
+          formData.dob, 
+          formData.gender
+      );
 
       if (result.success) {
         setStep(4); // Success Screen
-        setTimeout(() => router.push("/tasks"), 2000);
+        // Longer timeout so they can read the "Check Email" message
+        setTimeout(() => router.push("/tasks"), 4000);
       } else {
         alert("Registration failed: " + result.error);
         setIsLoading(false);
@@ -65,9 +73,9 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col justify-center items-center px-6 relative overflow-hidden text-white font-sans selection:bg-[#FFD700] selection:text-black">
       {/* Back Button */}
-            <Link href="/" className="absolute top-8 left-8 text-gray-400 hover:text-white transition flex items-center gap-2">
-              <ArrowLeft size={20} /> Back
-            </Link>
+      <Link href="/" className="absolute top-8 left-8 text-gray-400 hover:text-white transition flex items-center gap-2">
+         <ArrowLeft size={20} /> Back
+      </Link>
 
       {/* Background Ambience */}
       <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-[#FFD700] to-blue-600"></div>
@@ -90,15 +98,28 @@ export default function RegisterPage() {
                         <p className="text-gray-400">Basic details to get started.</p>
                     </div>
                     <form onSubmit={handleNextStep} className="space-y-4">
+                        {/* Name Input */}
                         <div className="group relative">
                             <User className="absolute left-4 top-4 text-gray-500" size={20} />
                             <input name="name" type="text" placeholder="Full Name" required value={formData.name} onChange={handleChange} className="w-full bg-white/5 border border-white/10 text-white py-4 pl-12 pr-4 rounded-2xl focus:border-[#FFD700] outline-none" />
                         </div>
+
                         <div className="grid grid-cols-2 gap-4">
+                            {/* DOB Input (New) */}
                             <div className="group relative">
                                 <Calendar className="absolute left-4 top-4 text-gray-500" size={20} />
-                                <input name="age" type="number" placeholder="Age" required value={formData.age} onChange={handleChange} className="w-full bg-white/5 border border-white/10 text-white py-4 pl-12 pr-4 rounded-2xl focus:border-[#FFD700] outline-none" />
+                                <input 
+                                    name="dob" 
+                                    type="date" 
+                                    required 
+                                    value={formData.dob} 
+                                    onChange={handleChange} 
+                                    // 'color-scheme: dark' forces the calendar picker to be dark mode
+                                    className="w-full bg-white/5 border border-white/10 text-white py-4 pl-12 pr-2 rounded-2xl focus:border-[#FFD700] outline-none [color-scheme:dark]" 
+                                />
                             </div>
+
+                            {/* Gender Select */}
                             <div className="relative">
                                 <Users className="absolute left-4 top-4 text-gray-500" size={20} />
                                 <select name="gender" value={formData.gender} onChange={handleChange} className="w-full bg-white/5 border border-white/10 text-white py-4 pl-12 pr-4 rounded-2xl focus:border-[#FFD700] outline-none appearance-none">
@@ -112,7 +133,7 @@ export default function RegisterPage() {
                 </div>
             )}
 
-            {/* STEP 2: CREDENTIALS */}
+            {/* STEP 2: CREDENTIALS (Unchanged) */}
             {step === 2 && (
                 <div className="animate-fade-in-up">
                     <div className="text-center mb-8">
@@ -141,7 +162,7 @@ export default function RegisterPage() {
                 </div>
             )}
 
-            {/* STEP 3: TERMS */}
+            {/* STEP 3: TERMS (Unchanged) */}
             {step === 3 && (
                 <div className="animate-fade-in-up">
                     <div className="text-center mb-8">
@@ -169,22 +190,26 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* STEP 4: SUCCESS */}
+      {/* STEP 4: SUCCESS (Now Mentions Email) */}
       {step === 4 && (
         <div className="text-center animate-scale-up z-10">
             <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="text-green-500 w-12 h-12" />
             </div>
             <h1 className="text-3xl font-black text-white mb-2">Welcome Aboard!</h1>
-            <p className="text-gray-400">Redirecting to dashboard...</p>
+            <p className="text-gray-400 mb-4">Account created successfully.</p>
+            
+            {/* EMAIL VERIFICATION NOTICE */}
+            <div className="bg-white/10 p-4 rounded-xl border border-white/20 max-w-xs mx-auto">
+                <p className="text-sm font-bold text-[#FFD700] mb-1">Check your inbox!</p>
+                <p className="text-xs text-gray-300">We sent a verification link to {formData.email}. Please verify to unlock all tasks.</p>
+            </div>
         </div>
       )}
 
       <p className="mt-8 text-center text-gray-500 text-sm">
           Already a member? <Link href="/login" className="text-[#FFD700] font-bold hover:underline">Login Now</Link>
-        </p>
+      </p>
     </div>
-
-    
   );
 }

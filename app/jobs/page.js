@@ -15,7 +15,7 @@ export default function JobsPage() {
 
       {/* Text */}
       <h1 className="text-3xl font-black text-kasi-dark mb-2">
-        Full-Time Jobs
+        Side-Jobs
       </h1>
       <h2 className="text-xl font-bold text-gray-400 mb-6">
         Coming <span className="text-kasi-gold">Soon</span>
