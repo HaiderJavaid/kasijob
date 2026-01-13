@@ -131,7 +131,7 @@ function TasksContent() {
       return <span className="bg-red-50 text-red-600 text-[10px] font-black px-2 py-1 rounded flex items-center gap-1 animate-pulse"><Clock size={10}/> {hours}h left</span>;
   };
 
-  // 3. INITIAL DATA LOAD (AUTOPLAY LOGIC HERE)
+ // 3. INITIAL DATA LOAD (FIXED SCOPE)
   useEffect(() => {
     const initData = async () => {
       try {
@@ -141,17 +141,20 @@ function TasksContent() {
             const userRef = doc(db, "users", authUser.uid);
             const userSnap = await getDoc(userRef);
             
-            if (userSnap.exists()) {
-                setUser({ ...authUser, ...userSnap.data() });
-            } else {
-                setUser(authUser);
-            }
+            // FIX: Define userData in the outer scope so it's always available
+            let userData = { ...authUser }; 
 
+            if (userSnap.exists()) {
+                userData = { ...authUser, ...userSnap.data() };
+            }
+            
+            setUser(userData); // Update State
+            
             const allTasks = await getActiveTasks();
             setTasks(allTasks);
 
-        // --- AUTOPLAY CHECK (DB BASED) ---
-            // Only run if DB field is missing AND tasks exist
+            // --- AUTOPLAY CHECK (DB BASED) ---
+            // Now userData is guaranteed to exist
             if (!userData.hasSeenMainTutorial && allTasks.length > 0) {
                setRunTutorial(true);
             }
