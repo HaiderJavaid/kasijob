@@ -1,5 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+// 1. Force dynamic rendering
+export const dynamic = "force-dynamic";
+
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth, db } from "../../lib/firebase"; 
 import { doc, getDoc } from "firebase/firestore";
@@ -13,7 +16,8 @@ import AppTutorial from "../../components/AppTutorial";
 import { getWalletStats, saveBankDetails } from "../../lib/billing"; 
 import { getUserSubmissions } from "../../lib/tasks"; 
 
-export default function ProfilePage() {
+// 2. We move the main logic into a sub-component called "ProfileContent"
+function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -54,20 +58,16 @@ export default function ProfilePage() {
         placement: 'bottom',
     },
     {
-        target: '.nav-item-leaderboard', // We will ask them to click Rank next
+        target: '.nav-item-leaderboard', 
         content: 'Almost done! Click the Leaderboard to see how to earn a 100% Bonus.',
         placement: 'top',
-        hideFooter: true, // Force them to click the nav item
+        hideFooter: true, 
         spotlightClicks: true,
     }
   ];
 
-  // --- TUTORIAL HANDLERS ---
-  // --- BRIDGE LOGIC ---
   const handleProfileStepChange = (index) => {
-      // If we are on the step pointing to Leaderboard (Index 2)
       if (index === 2) {
-          // Set the flag so the next page knows to start
           localStorage.setItem('kasi_tour_progress', 'leaderboard_pending');
       }
   };
@@ -76,25 +76,19 @@ export default function ProfilePage() {
       setRunProfileTour(false);
   };
 
-useEffect(() => {
-     // 1. Check URL param (Auto-redirect)
+  useEffect(() => {
      if (searchParams.get('tour') === 'true') {
-         // FIX: Add delay for Navbar to load
          setTimeout(() => setRunProfileTour(true), 1000);
      }
      
-     // 2. Check Manual Navigation (From Tasks Page)
      const progress = localStorage.getItem('kasi_tour_progress');
      
-     // FIX: Check for 'profile_pending', NOT 'leaderboard_pending'
      if (progress === 'profile_pending') {
-         // FIX: Add delay here too
          setTimeout(() => setRunProfileTour(true), 1000);
          localStorage.removeItem('kasi_tour_progress'); 
      }
   }, [searchParams]);
 
-  // --- DATA LOADING ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
@@ -120,7 +114,7 @@ useEffect(() => {
           const tHistory = await getUserSubmissions(currentUser.uid);
           setTasks(tHistory);
 
-          // Calculate Updates (Red Dot)
+          // Calculate Updates
           const newUpdates = tHistory.filter(t => t.status === 'approved' || t.status === 'rejected').length;
           setUpdatesCount(newUpdates);
 
@@ -186,17 +180,15 @@ useEffect(() => {
 
         {/* BALANCE CARD */}
         <div className="bg-kasi-dark text-white p-6 rounded-3xl shadow-lg relative overflow-hidden tutorial-balance">
-            {/* --- NEW: HISTORY BUTTON (Top Right) --- */}
-    <button 
-        onClick={() => router.push('/wallet/history')} 
-        className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition z-10"
-    >
-        <Clock size={18} />
-    </button>
-    {/* --------------------------------------- */}
+            {/* HISTORY BUTTON */}
+            <button 
+                onClick={() => router.push('/wallet/history')} 
+                className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition z-10"
+            >
+                <Clock size={18} />
+            </button>
 
-    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Wallet size={80} /></div>
-            <div className="absolute top-0 right-0 p-4 opacity-10"><Wallet size={80} /></div>
+            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Wallet size={80} /></div>
             
             <p className="text-gray-400 text-xs font-bold uppercase">Total Earnings</p>
             <p className="text-4xl font-black mt-2 text-kasi-gold">RM {user?.balance?.toFixed(2) || "0.00"}</p>
@@ -250,7 +242,6 @@ useEffect(() => {
                     }`}
                 >
                     {tab} History
-                    {/* The Red Dot Logic */}
                     {tab === 'tasks' && updatesCount > 0 && (
                        <span className="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-white"></span>
                     )}
@@ -335,5 +326,14 @@ useEffect(() => {
         </div>
       )}
     </div>
+  );
+}
+
+// 3. MAIN EXPORT WRAPPED IN SUSPENSE
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-kasi-gray flex items-center justify-center">Loading Profile...</div>}>
+      <ProfileContent />
+    </Suspense>
   );
 }
