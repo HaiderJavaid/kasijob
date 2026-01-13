@@ -1,24 +1,25 @@
 "use client";
-import { useState, useEffect } from "react";
+// 1. Force dynamic rendering
+export const dynamic = "force-dynamic";
+
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getCurrentUser } from "../../lib/auth"; 
 import { getLeaderboard } from "../../lib/gamification"; 
 import { stringToColor, getInitials } from "../../lib/utils"; 
-import { Crown, Loader2 } from "lucide-react";
+import { Crown, Loader2, Trophy } from "lucide-react"; // Added Trophy for fallback
 import AppTutorial from "../../components/AppTutorial"; 
 import { db } from "../../lib/firebase"; 
 import { doc, getDoc } from "firebase/firestore";
 
-// --- SMART SAFE AVATAR (Now uses R2 Logic) ---
+// --- SMART SAFE AVATAR ---
 const SafeAvatar = ({ user, className }) => {
     const [displayUrl, setDisplayUrl] = useState(null);
     const [imgError, setImgError] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
-
         const fetchFreshUrl = async () => {
-            // 1. Priority: Fetch fresh URL using avatarKey (just like AvatarUpload.js)
             if (user?.avatarKey) {
                 try {
                     const res = await fetch(`/api/r2?key=${user.avatarKey}`);
@@ -31,19 +32,14 @@ const SafeAvatar = ({ user, className }) => {
                     console.error("Avatar fetch error:", e);
                 }
             }
-
-            // 2. Fallback: Use existing photoURL
             if (user?.photoURL && isMounted) {
                 setDisplayUrl(user.photoURL);
             }
         };
-
         fetchFreshUrl();
-
         return () => { isMounted = false; };
     }, [user]);
 
-    // Render Initials if no URL found or error occurs
     if (!displayUrl || imgError) {
         return (
             <div 
@@ -54,7 +50,6 @@ const SafeAvatar = ({ user, className }) => {
             </div>
         );
     }
-
     return (
         <img 
             src={displayUrl} 
@@ -65,7 +60,8 @@ const SafeAvatar = ({ user, className }) => {
     );
 };
 
-export default function LeaderboardPage() {
+// --- CONTENT COMPONENT (Logic moved here) ---
+function LeaderboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -93,7 +89,6 @@ export default function LeaderboardPage() {
          const authUser = await getCurrentUser();
          
          if (authUser) {
-             // FETCH REAL DB DATA to ensure Name/Balance match Profile Page
              try {
                 const docRef = doc(db, "users", authUser.uid);
                 const docSnap = await getDoc(docRef);
@@ -112,7 +107,6 @@ export default function LeaderboardPage() {
          setLeaders(data);
          setLoading(false);
 
-         // Tutorial Flags
          if (searchParams.get('tour') === 'true') setRunRankTour(true);
          
          const progress = localStorage.getItem('kasi_tour_progress');
@@ -130,7 +124,6 @@ export default function LeaderboardPage() {
       router.push('/tasks'); 
   };
 
-  // Find My Rank
   const myRankIndex = leaders.findIndex(l => String(l.id) === String(user?.uid));
   const myRankDisplay = myRankIndex !== -1 ? myRankIndex + 1 : "99+";
 
@@ -197,12 +190,11 @@ export default function LeaderboardPage() {
       {/* --- LIST SECTION --- */}
       <div className="bg-gray-50 rounded-t-[2.5rem] min-h-[500px] shadow-[0_-10px_40px_rgba(0,0,0,0.3)] pb-10">
           
-         {/* YOUR POSITION (STICKY HEADER) - FIXED DATA */}
+         {/* YOUR POSITION (STICKY HEADER) */}
           <div className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-md rounded-t-[2.5rem] px-6 pt-6 pb-2 border-b border-gray-200 transition-all">
              <div className="bg-kasi-dark text-white p-4 rounded-2xl flex items-center justify-between shadow-xl shadow-gray-300/50">
                 <div className="flex items-center gap-4">
                     <div className="shrink-0">
-                         {/* Uses Smart Avatar Logic */}
                          <SafeAvatar user={user} className="w-10 h-10 rounded-full border border-gray-600" />
                     </div>
                     
@@ -210,7 +202,6 @@ export default function LeaderboardPage() {
                     
                     <div className="flex flex-col justify-center">
                         <p className="font-bold text-sm truncate max-w-[120px] leading-tight text-white">
-                            {/* Correct Priority: DB Name -> DisplayName -> Email -> "You" */}
                             {user?.name || user?.displayName || user?.email?.split('@')[0] || "You"}
                         </p>
                         <p className="text-xs text-kasi-gold font-black mt-0.5">
@@ -256,5 +247,18 @@ export default function LeaderboardPage() {
           </div>
       </div>
     </div>
+  );
+}
+
+// 3. MAIN COMPONENT WITH SUSPENSE (This fixes Netlify Build)
+export default function LeaderboardPage() {
+  return (
+    <Suspense fallback={
+        <div className="min-h-screen bg-kasi-dark flex items-center justify-center text-white">
+            <Loader2 className="animate-spin mr-2"/> Initializing...
+        </div>
+    }>
+      <LeaderboardContent />
+    </Suspense>
   );
 }
