@@ -148,7 +148,7 @@ function TasksContent() {
             
             setUser(userData); 
             
-            const allTasks = await getActiveTasks();
+            const allTasks = await getActiveTasks(authUser.uid);
             setTasks(allTasks);
 
             // Fix: Check userData, not user
