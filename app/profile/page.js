@@ -4,10 +4,11 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth, db } from "../../lib/firebase"; 
-import { doc, getDoc, updateDoc } from "firebase/firestore"; // Added updateDoc
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore"; 
 import { onAuthStateChanged } from "firebase/auth";
 import { 
-  LogOut, Wallet, CreditCard, X, CheckCircle, Info, ShieldCheck, Briefcase, Clock
+  LogOut, Wallet, CreditCard, X, CheckCircle, Info, ShieldCheck, Briefcase, Clock, 
+  Gift, Users, Copy, Share2 
 } from "lucide-react"; 
 import AvatarUpload from '@/components/AvatarUpload';
 import AppTutorial from "../../components/AppTutorial"; 
@@ -23,6 +24,7 @@ function ProfileContent() {
   const [loading, setLoading] = useState(true);
   
   const [tasks, setTasks] = useState([]);
+  const [referrals, setReferrals] = useState([]); // New Referral State
   const [updatesCount, setUpdatesCount] = useState(0); 
   const [payableAmount, setPayableAmount] = useState(0);
   const [holdAmount, setHoldAmount] = useState(0);
@@ -51,7 +53,6 @@ function ProfileContent() {
 
   const handleTourFinish = async () => {
       setRunProfileTour(false);
-      // SAVE TO FIREBASE
       if (user?.uid) {
           try {
               const userRef = doc(db, "users", user.uid);
@@ -60,7 +61,7 @@ function ProfileContent() {
       }
   };
 
-  // LOAD DATA & CHECK TUTORIAL STATUS FROM DB
+  // LOAD DATA
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) { router.push("/login"); return; }
@@ -73,23 +74,29 @@ function ProfileContent() {
           setUser(userData);
           if (userData.bankDetails) setBankDetails(userData.bankDetails);
 
-          // TUTORIAL CHECK (DB Based)
-          // Run if: 1. Not seen in DB AND 2. Explicitly requested via URL or previous step
+          // Tutorial Check
           const shouldRun = !userData.hasSeenProfileTour && (searchParams.get('tour') === 'true' || localStorage.getItem('kasi_tour_progress') === 'profile_pending');
-          
           if (shouldRun) {
               setTimeout(() => setRunProfileTour(true), 1000);
               localStorage.removeItem('kasi_tour_progress');
           }
 
+          // Wallet Stats
           const currentBalance = userData.balance || 0;
           const stats = await getWalletStats(currentUser.uid, currentBalance);
           setPayableAmount(stats.payable);
           setHoldAmount(stats.hold);
 
+          // Task History
           const tHistory = await getUserSubmissions(currentUser.uid);
           setTasks(tHistory);
           setUpdatesCount(tHistory.filter(t => t.status === 'approved' || t.status === 'rejected').length);
+
+          // Load Referrals
+          const refQ = query(collection(db, "users"), where("referredBy", "==", currentUser.uid));
+          const refSnap = await getDocs(refQ);
+          setReferrals(refSnap.docs.map(d => d.data()));
+
         } else {
           setUser({ email: currentUser.email, name: "User", uid: currentUser.uid, balance: 0 });
         }
@@ -109,6 +116,11 @@ function ProfileContent() {
         setUser(prev => ({ ...prev, bankDetails }));
     } catch (error) { alert("Error: " + error.message); } 
     finally { setIsSavingBank(false); }
+  };
+
+  const handleCopyCode = () => {
+      navigator.clipboard.writeText(user?.referralCode || "");
+      alert("Referral Code Copied!");
   };
 
   if (loading) return <div className="min-h-screen bg-kasi-gray flex items-center justify-center">Loading...</div>;
@@ -151,19 +163,49 @@ function ProfileContent() {
             <p className="text-[10px] text-center text-gray-500 mt-3">*Earnings after the 25th are held until next month.</p>
         </div>
 
+        {/* REFERRAL CARD */}
+        {/* REFERRAL CARD (SIMPLIFIED & CLEAN) */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mt-6">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                
+                {/* Left: Text Info */}
+                <div className="text-center sm:text-left">
+                    <h3 className="text-base font-black text-gray-900">Invite Friends</h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Earn <b className="text-green-600">RM 2.00</b> for every new user you refer.
+                    </p>
+                </div>
+
+                {/* Right: Code & Action */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex-1 sm:w-40 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-center">
+                        <span className="font-mono text-lg font-black text-gray-800 tracking-widest select-all">
+                            {user?.referralCode || "Loading"}
+                        </span>
+                    </div>
+                    <button 
+                        onClick={handleCopyCode} 
+                        className="bg-black text-white p-3 rounded-xl hover:bg-gray-800 active:scale-95 transition shadow-lg"
+                    >
+                        <Copy size={20} />
+                    </button>
+                </div>
+            </div>
+        </div>
+
         {user?.role === 'admin' && (
             <button onClick={() => router.push('/admin')} className="w-full bg-red-600 text-white font-black py-4 rounded-xl shadow-lg shadow-red-200 mt-4 flex items-center justify-center gap-2 hover:bg-red-700 transition"><ShieldCheck size={20} /> Access Admin Dashboard</button>
         )}
 
-        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
-            {['tasks', 'jobs'].map((tab) => (
+        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100 mt-6">
+            {['tasks', 'referrals'].map((tab) => (
                 <button key={tab} onClick={() => setActiveTab(tab)} className={`relative flex-1 py-2 text-xs font-bold rounded-lg capitalize transition-all ${activeTab === tab ? "bg-kasi-gold text-kasi-dark shadow-sm" : "text-gray-400 hover:bg-gray-50"}`}>
                     {tab} History {tab === 'tasks' && updatesCount > 0 && <span className="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-white"></span>}
                 </button>
             ))}
         </div>
 
-        <div className="min-h-[200px]">
+        <div className="min-h-[200px] mt-4">
             {activeTab === 'tasks' && (
                 <div className="space-y-3">
                     {tasks.length === 0 ? <p className="text-center text-gray-400 text-sm py-4">No tasks completed yet.</p> : tasks.map((task, i) => (
@@ -174,15 +216,24 @@ function ProfileContent() {
                     ))}
                 </div>
             )}
-            {activeTab === 'jobs' && (
-                <div className="text-center py-10 bg-white rounded-3xl border border-dashed border-gray-200"><Briefcase size={32} className="mx-auto text-gray-300 mb-2"/><h3 className="font-bold text-gray-400">No Jobs Yet</h3><p className="text-xs text-gray-400 max-w-[200px] mx-auto mt-1">Applied jobs will appear here.</p></div>
+            {activeTab === 'referrals' && (
+                 <div className="space-y-3">
+                    {referrals.length === 0 ? <p className="text-center text-gray-400 text-sm py-4">No referrals yet.</p> : referrals.map((ref, i) => (
+                        <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">{ref.name?.[0]}</div>
+                                <div><p className="font-bold text-sm text-kasi-dark">{ref.name}</p><p className="text-[10px] text-gray-400">{new Date(ref.createdAt?.seconds * 1000).toLocaleDateString()}</p></div>
+                            </div>
+                            <span className="text-green-600 font-bold text-xs">+ RM 2.00</span>
+                        </div>
+                    ))}
+                 </div>
             )}
         </div>
       </div>
 
-      {/* --- BANK DETAILS MODAL FIX --- */}
+      {/* --- BANK DETAILS MODAL --- */}
       {showBankModal && (
-        // CHANGED: items-end -> items-center
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowBankModal(false)}></div>
             <div className="bg-white w-full max-w-md rounded-3xl p-6 relative z-10 animate-slide-up">

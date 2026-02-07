@@ -152,9 +152,9 @@ function TasksContent() {
             setTasks(allTasks);
 
             // Fix: Check userData, not user
-            if (!userData.hasSeenMainTutorial && allTasks.length > 0) {
-               setRunTutorial(true);
-            }
+            // if (!userData.hasSeenMainTutorial && allTasks.length > 0) {
+            //    setRunTutorial(true);
+            // }
         }
       } catch (error) { console.error(error); } finally { setLoading(false); }
     };

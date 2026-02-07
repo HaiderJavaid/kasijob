@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, User, Mail, Lock, ArrowRight, CheckCircle, Eye, Calendar, Users } from "lucide-react";
 import { registerUser } from "../../lib/auth"; 
+import { generateReferralCode, processReferral } from "../../lib/referralUtils"; 
+import { updateDoc, doc } from "firebase/firestore";
+import { db } from "../../lib/firebase"
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -11,14 +14,11 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // Form State (Updated age -> dob)
+  // Update formData state to include referralCode
   const [formData, setFormData] = useState({
-    name: "",
-    dob: "", // Changed from age
-    gender: "male",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    name: "", dob: "", gender: "male",
+    email: "", password: "", confirmPassword: "",
+    referralCode: "", // <--- Added this
     agreeTerms: false
   });
 
@@ -47,18 +47,26 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
-      // Pass dob and gender to the new auth function
+      // 1. Create Auth User (Standard)
       const result = await registerUser(
-          formData.email, 
-          formData.password, 
-          formData.name, 
-          formData.dob, 
-          formData.gender
+          formData.email, formData.password, formData.name, formData.dob, formData.gender
       );
 
       if (result.success) {
-        setStep(4); // Success Screen
-        // Longer timeout so they can read the "Check Email" message
+        const newUserId = result.user.uid;
+
+        // 2. Assign THEIR OWN new code immediately
+        const myNewCode = generateReferralCode();
+        await updateDoc(doc(db, "users", newUserId), { 
+            referralCode: myNewCode 
+        });
+
+        // 3. Process Referral (If they entered a code)
+        if (formData.referralCode) {
+            await processReferral(newUserId, formData.referralCode);
+        }
+
+        setStep(4);
         setTimeout(() => router.push("/tasks"), 4000);
       } else {
         alert("Registration failed: " + result.error);
@@ -154,6 +162,18 @@ export default function RegisterPage() {
                             <input name="confirmPassword" type={showPassword ? "text" : "password"} placeholder="Confirm Password" required value={formData.confirmPassword} onChange={handleChange} className="w-full bg-white/5 border border-white/10 text-white py-4 pl-12 pr-12 rounded-2xl focus:border-[#FFD700] outline-none" />
                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-gray-500 hover:text-white"><Eye size={20}/></button>
                         </div>
+                        <div className="relative">
+       <Users className="absolute left-4 top-4 text-gray-500" size={20} />
+       <input 
+          name="referralCode" 
+          type="text" 
+          placeholder="Referral Code (Optional)" 
+          value={formData.referralCode} 
+          onChange={handleChange} 
+          className="w-full bg-white/5 border border-white/10 text-white py-4 pl-12 pr-4 rounded-2xl focus:border-[#FFD700] outline-none uppercase tracking-widest placeholder-gray-600" 
+       />
+       <p className="text-[10px] text-gray-500 mt-1 ml-2">Enter code to get RM2.00 bonus.</p>
+  </div>
                         <div className="flex gap-3 mt-4">
                             <button type="button" onClick={() => setStep(1)} className="flex-1 border border-white/10 text-gray-400 font-bold py-4 rounded-2xl hover:bg-white/5">Back</button>
                             <button type="submit" className="flex-[2] bg-white text-black font-black py-4 rounded-2xl hover:bg-gray-200">Next</button>
