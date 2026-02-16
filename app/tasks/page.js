@@ -10,6 +10,7 @@ import StreakBoard from "../../components/StreakBoard";
 import { db } from "../../lib/firebase"; 
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
+
 import { 
   Clock, Zap, Globe, Download, Share2, Star, Gift, 
   Camera, Loader2, Image as ImageIcon, Trash2, X, ArrowRight, 
@@ -277,33 +278,48 @@ function TasksContent() {
         {activeTab === "inhouse" && (
           <div className="space-y-6 animate-fade-in">
             <div className="space-y-3">
-                {tasks.map((task, index) => (
-                    <div 
-                        key={task.id} 
-                        onClick={() => openTask(task)} 
-                        className={`bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 cursor-pointer active:scale-95 transition-transform relative overflow-hidden group ${index === 0 ? 'tutorial-first-task' : ''}`}
-                    >
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100 shrink-0">
-                                    {getTaskIcon(task)}
-                                </div>
-                                <div>
-                                    <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        {task.platform && task.platform !== 'none' && (
-                                            <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
-                                                {task.platform}
-                                            </span>
-                                        )}
-                                        {getTimeLeftBadge(task.expiryDate)}
+                
+                {/* --- NEW EMPTY STATE LOGIC --- */}
+                {tasks.length === 0 && !loading ? (
+                     <div className="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-200 opacity-80 mt-4">
+                         <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                             <Clock size={40} />
+                         </div>
+                         <h3 className="text-gray-900 font-bold text-xl mb-2">All Caught Up!</h3>
+                         <p className="text-gray-500 text-sm max-w-[220px] mx-auto leading-relaxed">
+                             No in-house tasks available right now. Please check back later or try the <b>Partner Walls</b>.
+                         </p>
+                     </div>
+                ) : (
+                     // --- YOUR EXISTING MAPPING LOGIC ---
+                     tasks.map((task, index) => (
+                        <div 
+                            key={task.id} 
+                            onClick={() => openTask(task)} 
+                            className={`bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 cursor-pointer active:scale-95 transition-transform relative overflow-hidden group ${index === 0 ? 'tutorial-first-task' : ''}`}
+                        >
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100 shrink-0">
+                                        {getTaskIcon(task)}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-kasi-dark font-bold text-sm line-clamp-1">{task.title}</h3>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            {task.platform && task.platform !== 'none' && (
+                                                <span className="text-[10px] uppercase font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
+                                                    {task.platform}
+                                                </span>
+                                            )}
+                                            {getTimeLeftBadge(task.expiryDate)}
+                                        </div>
                                     </div>
                                 </div>
+                                <div className="text-right"><span className="block text-xl font-bold text-kasi-gold">+RM{task.reward}</span></div>
                             </div>
-                            <div className="text-right"><span className="block text-xl font-bold text-kasi-gold">+RM{task.reward}</span></div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Gift, CircleCheck, Flame, Clock, Lock } from "lucide-react"; // Changed Check to CircleCheck
+import { Gift, CircleCheck, Flame, Clock } from "lucide-react"; 
 import { performDailyCheckIn } from "../lib/gamification";
 
 export default function StreakBoard({ user, onUpdate }) {
@@ -11,6 +11,7 @@ export default function StreakBoard({ user, onUpdate }) {
   // Current Streak from DB
   const streak = user?.checkInStreak || 0;
 
+  // LOGIC: 0.1, 0.2, 0.3, 0.4, 0.5 (Max at Day 5)
   const calculateReward = (day) => Math.min(0.10 + ((day - 1) * 0.10), 0.50);
 
   // --- TIMER LOGIC ---
@@ -24,7 +25,6 @@ export default function StreakBoard({ user, onUpdate }) {
 
         const lastCheckInTime = user.lastCheckIn.toDate().getTime();
         const now = new Date().getTime();
-        // 20 Hours Cooldown
         const COOLDOWN_MS = 20 * 60 * 60 * 1000; 
         const nextClaimTime = lastCheckInTime + COOLDOWN_MS;
         const diff = nextClaimTime - now;
@@ -49,9 +49,8 @@ export default function StreakBoard({ user, onUpdate }) {
     if (!user || !canClaim) return;
     setLoading(true);
     
-    // Optimistic Update: Make it green instantly while saving
+    // Optimistic Update
     if (onUpdate) {
-         // Create a temporary "Fake" update so UI feels instant
          const estimatedStreak = streak + 1;
          onUpdate({ checkInStreak: estimatedStreak });
     }
@@ -63,14 +62,13 @@ export default function StreakBoard({ user, onUpdate }) {
           const now = new Date();
           onUpdate({ 
               balance: (user.balance || 0) + result.reward,
-              checkInStreak: result.streak, // Use real server value
+              checkInStreak: result.streak,
               lastCheckIn: { toDate: () => now }
           });
       }
       setCanClaim(false);
     } else {
       alert(result.error);
-      // Revert if error (optional, but good practice)
       if (onUpdate) onUpdate({ checkInStreak: streak }); 
     }
     setLoading(false);
@@ -80,13 +78,13 @@ export default function StreakBoard({ user, onUpdate }) {
   const renderDays = () => {
     return [1, 2, 3, 4, 5].map((day) => {
         const rewardAmount = calculateReward(day);
-        const isMax = day === 5;
         
-        // 1. Completed: Day is less than or equal to current streak
+        // 1. Completed
         const isCompleted = day <= streak;
-        
-        // 2. Current Target: The day we are waiting for
+        // 2. Current Target
         const isCurrent = day === streak + 1;
+        // 3. Max Day Visual
+        const isMax = day === 5;
 
         return (
             <div key={day} className={`flex-1 flex flex-col items-center gap-1 relative ${isMax ? "min-w-[50px]" : ""}`}>
@@ -101,12 +99,12 @@ export default function StreakBoard({ user, onUpdate }) {
                 {/* BUBBLE */}
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold z-10 transition-all duration-500 ${
                     isCompleted 
-                        ? "bg-green-500 text-white shadow-md shadow-green-200" // COMPLETED (Full Green)
+                        ? "bg-green-500 text-white shadow-md shadow-green-200"
                         : isCurrent 
                             ? canClaim 
-                                ? "bg-kasi-gold text-kasi-dark scale-110 animate-pulse ring-4 ring-yellow-50 shadow-lg" // READY
-                                : "bg-white border-2 border-kasi-gold text-kasi-gold" // WAITING
-                            : "bg-gray-100 text-gray-300" // FUTURE
+                                ? "bg-kasi-gold text-kasi-dark scale-110 animate-pulse ring-4 ring-yellow-50 shadow-lg"
+                                : "bg-white border-2 border-kasi-gold text-kasi-gold"
+                            : "bg-gray-100 text-gray-300"
                 }`}>
                     {isCompleted ? (
                         <CircleCheck size={20} fill="currentColor" className="text-green-800" />
@@ -128,18 +126,16 @@ export default function StreakBoard({ user, onUpdate }) {
 
   return (
     <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6 relative overflow-hidden">
-        {/* Decorative Background */}
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Flame size={100} /></div>
 
-        <div className="flex justify-between items-center mb-5">
+        <div className="flex justify-between items-center mb-5 relative z-10">
             <div>
                 <h3 className="font-black text-lg text-kasi-dark flex items-center gap-2">
                     Daily Streak <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-bold uppercase tracking-wider"><Flame size={10} fill="currentColor"/> {streak} Days</span>
                 </h3>
-                <p className="text-xs text-gray-400 font-medium">Login daily to boost your rewards!</p>
+                <p className="text-xs text-gray-400 font-medium">Losing your streak will reset your progress!</p>
             </div>
             
-            {/* CLAIM BUTTON */}
             <button 
                 onClick={handleClaim} 
                 disabled={!canClaim || loading}
@@ -149,20 +145,19 @@ export default function StreakBoard({ user, onUpdate }) {
                     : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200"
                 }`}
             >
-                {loading ? (
-                    "..." 
-                ) : canClaim ? (
-                    "Claim Reward"
-                ) : (
-                    <><Clock size={14}/> {timerString || "Wait..."}</>
-                )}
+                {loading ? "..." : canClaim ? "Claim Reward" : <><Clock size={14}/> {timerString || "Wait..."}</>}
             </button>
         </div>
 
-        {/* VISUAL BAR */}
-        <div className="flex justify-between relative px-1">
-            {renderDays()}
+        {/* --- MOBILE FIX START --- */}
+        {/* We wrap the visual bar in overflow-x-auto to allow scrolling on tiny screens */}
+        <div className="w-full overflow-x-auto pb-2 hide-scrollbar">
+            {/* We set a min-width so the bubbles never squash, even on iPhone SE */}
+            <div className="flex justify-between relative px-1 min-w-[320px]">
+                {renderDays()}
+            </div>
         </div>
+        {/* --- MOBILE FIX END --- */}
     </div>
   );
 }

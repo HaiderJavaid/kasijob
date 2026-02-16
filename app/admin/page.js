@@ -2,9 +2,10 @@
 import { useState, useEffect } from "react";
 import { db } from "../../lib/firebase";
 import { collection, getCountFromServer, query, where } from "firebase/firestore";
-import { Users, CheckCircle, Clock, Network, Link as LinkIcon, RefreshCcw } from "lucide-react";
+import { Users, CheckCircle, DollarSign, Clock, Network, Link as LinkIcon, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { backfillReferralCodes, manualLinkUser } from "../../lib/referralUtils";
+import { generateRetroactiveRewards, syncBalancesToLedger } from "../../lib/payoutUtils";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ users: 0, pending: 0, activeTasks: 0 });
@@ -39,6 +40,13 @@ export default function AdminDashboard() {
       const res = await manualLinkUser(linkData.email, linkData.code);
       if(res.success) { alert("Linked successfully!"); setShowLinkModal(false); setLinkData({email:"", code:""}); }
       else alert("Error: " + res.error);
+  };
+
+  const handlePayoutSync = async () => {
+      if(!confirm("⚠️ This will generate payments for ALL users based on the current tree. Ensure the tree is correct first!")) return;
+      
+      const res = await generateRetroactiveRewards();
+      alert(`Payout Complete!\nUpdated Users: ${res.updated}\nTotal Paid: RM ${res.totalPaid.toFixed(2)}`);
   };
 
   return (
@@ -91,13 +99,21 @@ export default function AdminDashboard() {
                   <p className="text-xs text-gray-400 mt-1">Fix user hierarchy manually.</p>
               </button>
 
+            <button onClick={handlePayoutSync} className="p-4 bg-gray-50 hover:bg-green-50 rounded-2xl text-left transition group border border-gray-100">
+             <DollarSign size={20} className="text-gray-400 group-hover:text-green-600 mb-2"/>
+              <h4 className="font-bold text-sm text-gray-800">Sync Payouts</h4>
+              <p className="text-xs text-gray-400 mt-1">Pay rewards based on fixed tree.</p>
+            </button>
+
               <Link href="/admin/tree" className="p-4 bg-gray-50 hover:bg-purple-50 rounded-2xl text-left transition group border border-gray-100 block">
                   <Network size={20} className="text-gray-400 group-hover:text-purple-600 mb-2"/>
                   <h4 className="font-bold text-sm text-gray-800">View Tree</h4>
                   <p className="text-xs text-gray-400 mt-1">Visualize the referral pyramid.</p>
               </Link>
-          </div>
+          </div> 
       </div>
+
+     
 
       {/* MANUAL LINK MODAL */}
       {showLinkModal && (

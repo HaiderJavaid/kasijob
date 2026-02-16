@@ -165,13 +165,13 @@ export default function RegisterPage() {
                         <div className="relative">
        <Users className="absolute left-4 top-4 text-gray-500" size={20} />
        <input 
-          name="referralCode" 
-          type="text" 
-          placeholder="Referral Code (Optional)" 
-          value={formData.referralCode} 
-          onChange={handleChange} 
-          className="w-full bg-white/5 border border-white/10 text-white py-4 pl-12 pr-4 rounded-2xl focus:border-[#FFD700] outline-none uppercase tracking-widest placeholder-gray-600" 
-       />
+    name="referralCode" 
+    type="text" 
+    placeholder="Referral Code (Optional)" 
+    value={formData.referralCode} 
+    onChange={(e) => setFormData({...formData, referralCode: e.target.value.toUpperCase()})} // FORCE UPPERCASE
+    className="w-full bg-white/5 border border-white/10 text-white py-4 pl-12 pr-4 rounded-2xl focus:border-[#FFD700] outline-none uppercase tracking-widest placeholder-gray-600" 
+/>
        <p className="text-[10px] text-gray-500 mt-1 ml-2">Enter code to get RM2.00 bonus.</p>
   </div>
                         <div className="flex gap-3 mt-4">

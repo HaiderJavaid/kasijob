@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getCurrentUser } from "../../lib/auth"; 
 import { getLeaderboard } from "../../lib/gamification"; 
-import { stringToColor, getInitials } from "../../lib/utils"; 
+import { stringToColor, getInitials } from "../../lib/profilePicture"; 
 import { Crown, Loader2, Trophy } from "lucide-react"; // Added Trophy for fallback
 import AppTutorial from "../../components/AppTutorial"; 
 import { db } from "../../lib/firebase"; 
