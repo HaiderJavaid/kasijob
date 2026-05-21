@@ -29,8 +29,11 @@ service cloud.firestore {
           "applicantEmail",
           "applicantName",
           "posterId",
+          "primarySkillTag",
           "status",
           "reviewStatus",
+          "messagingState",
+          "messageThreadId",
           "createdAt"
         ])
         && request.resource.data.keys().hasAll([
@@ -40,10 +43,12 @@ service cloud.firestore {
           "applicantId",
           "status",
           "reviewStatus",
+          "messagingState",
           "createdAt"
         ])
         && request.resource.data.jobId is string
         && exists(/databases/$(database)/documents/jobs/$(request.resource.data.jobId))
+        && get(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)).data.posterId != request.auth.uid
         && request.resource.data.jobTitle is string
         && request.resource.data.jobSource is string
         && request.resource.data.applicantId == request.auth.uid
@@ -58,6 +63,11 @@ service cloud.firestore {
           || request.resource.data.posterId is string)
         && request.resource.data.status == "interested"
         && request.resource.data.reviewStatus == "admin_reviewed_beta"
+        && request.resource.data.messagingState == "locked"
+        && (!("messageThreadId" in request.resource.data)
+          || request.resource.data.messageThreadId == null)
+        && (!("primarySkillTag" in request.resource.data)
+          || request.resource.data.primarySkillTag is string)
         && request.resource.data.createdAt is timestamp;
     }
 
@@ -69,30 +79,17 @@ service cloud.firestore {
           && resource.data.posterId == request.auth.uid);
     }
 
-    function validPosterReviewPair() {
-      return (request.resource.data.status == "shortlisted"
-          && request.resource.data.reviewStatus == "poster_shortlisted")
-        || (request.resource.data.status == "accepted"
-          && request.resource.data.reviewStatus == "poster_accepted")
-        || (request.resource.data.status == "rejected"
-          && request.resource.data.reviewStatus == "poster_rejected");
+    function canReadMessageThread() {
+      return isAdmin()
+        || (signedIn()
+          && ("participantIds" in resource.data)
+          && request.auth.uid in resource.data.participantIds);
     }
 
-    function validPosterApplicationUpdate() {
-      return signedIn()
-        && ("posterId" in resource.data)
-        && resource.data.posterId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "status",
-          "reviewStatus",
-          "updatedAt",
-          "reviewedAt",
-          "reviewedBy"
-        ])
-        && validPosterReviewPair()
-        && request.resource.data.reviewedBy == request.auth.uid
-        && request.resource.data.updatedAt is timestamp
-        && request.resource.data.reviewedAt is timestamp;
+    function canReadThreadMessage(threadId) {
+      return isAdmin()
+        || (signedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/messageThreads/$(threadId)).data.participantIds);
     }
 
     function protectedUserFieldsChanged() {
@@ -104,6 +101,7 @@ service cloud.firestore {
         "verificationStatus",
         "payoutMethod",
         "bankDetails",
+        "skillProgress",
         "referredBy",
         "referralCode"
       ]);
@@ -148,13 +146,18 @@ service cloud.firestore {
     match /jobApplications/{applicationId} {
       allow read: if canReadJobApplication();
       allow create: if signedIn() && validJobApplicationCreate();
-      allow update: if isAdmin() || validPosterApplicationUpdate();
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /messageThreads/{threadId} {
-      allow read: if signedIn();
+      allow read: if canReadMessageThread();
       allow create, update, delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if canReadThreadMessage(threadId);
+        allow create, update, delete: if isAdmin();
+      }
     }
 
     match /transactions/{transactionId} {

@@ -18,7 +18,7 @@
 - Data: Firestore.
 - Server routes: Next.js API routes under `app/api`.
 - Storage: Cloudflare R2 through S3-compatible SDK.
-- Tests: none found.
+- Tests: Node test runner covers shared marketplace lifecycle helpers.
 - Deploy: no repo-specific deploy config found. [VERIFY]
 
 ## Important Folders
@@ -45,7 +45,7 @@
 
 - Tasks: admin creates task, user submits proof, admin reviews, approval credits balance and transaction.
 - Jobs: user submits job for review, jobs list/detail display records and samples, worker applies through `jobApplications`.
-- Messaging: `/messages` reads signed-in `messageThreads` or sample threads; Firestore replies are not production-private yet.
+- Messaging: `/messages` reads participant-only `messageThreads`; replies go through a Firebase Admin-backed API route and nested `messages` subcollections.
 - Verification: unverified users are routed to `/verify-email`; verified status syncs to Firestore user docs.
 
 ## Collections Seen In Code
@@ -57,6 +57,7 @@
 - `jobs`
 - `jobApplications`
 - `messageThreads`
+- `messageThreads/{threadId}/messages`
 - `counters`
 
 ## Auth Notes
@@ -78,8 +79,8 @@
 ## Important Notes
 
 - Firestore schema is implicit in code.
-- `firestore.rules` includes beta `jobApplications` coverage and demo `messageThreads` reads, but still needs emulator validation.
-- `messageThreads` lacks participant IDs, so client writes should stay blocked until the schema changes.
+- `firestore.rules` includes beta `jobApplications`, participant-only `messageThreads`, and nested message read coverage, but still needs emulator validation.
+- `firestore.indexes.json` includes the participant inbox index for `messageThreads`.
 - `/api/r2` and `/api/upload` overlap; consolidate later.
 - Money-like updates still happen from more than one path.
-- Messaging is not private production chat yet.
+- Messaging is private to participants in the demo slice, but it is not moderated or notification-ready production chat yet.

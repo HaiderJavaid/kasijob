@@ -17,7 +17,7 @@ import {
   Tag,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { saveJob } from "@/lib/jobs";
+import { saveJob, SKILL_TAGS } from "@/lib/jobs";
 
 const initialForm = {
   title: "",
@@ -25,6 +25,7 @@ const initialForm = {
   description: "",
   locationType: "Remote",
   category: "General",
+  primarySkillTag: "General",
   requirements: "",
   client: "",
 };
@@ -63,6 +64,7 @@ export default function PostJobPage() {
         description: form.description,
         locationType: form.locationType,
         category: form.category,
+        primarySkillTag: form.primarySkillTag,
         requirements: form.requirements,
         client: form.client || authUser.displayName || "Beta client",
         posterId: authUser.uid,
@@ -171,6 +173,23 @@ export default function PostJobPage() {
                 <option value="Hybrid">Hybrid</option>
               </select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-kasi-dark">
+              <Tag size={16} /> Primary Skill Tag
+            </label>
+            <select
+              value={form.primarySkillTag}
+              onChange={(event) => updateField("primarySkillTag", event.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-white p-3 text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
+            >
+              {SKILL_TAGS.map((skillTag) => (
+                <option key={skillTag} value={skillTag}>
+                  {skillTag}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

@@ -30,17 +30,23 @@
 - Why: marketplace trust, payment responsibility, and abuse handling are not final.
 - Tradeoff: less automation, but safer demo story.
 
-## Keep Messaging Lightweight For Demo
+## Use Participant-Based Job Messaging
 
-- What: `messageThreads` supports a simple portfolio/demo conversation flow.
-- Why: the app needs a marketplace communication concept without pretending production chat is solved.
-- Tradeoff: real messaging still needs rules, moderation, notifications, and lifecycle decisions.
+- What: job application threads store poster/worker participant IDs and open for shortlisted or accepted applications.
+- Why: messaging should follow the marketplace lifecycle instead of being a public/demo thread concept.
+- Tradeoff: Firestore indexes/rules must be deployed and validated; moderation and notifications still need production hardening.
 
-## Keep Message Thread Writes Admin-Only
+## Keep Message Sends Server-Backed
 
-- What: Firestore rules allow signed-in demo reads for `messageThreads`, but client writes stay admin-only.
-- Why: thread documents do not yet store participant IDs, so rules cannot prove who may append messages.
-- Tradeoff: Firestore-backed replies may fail until messaging gets a participant schema or server route.
+- What: participants send messages through a protected server route that verifies Firebase ID tokens and thread membership.
+- Why: direct client writes are risky for private conversations and future moderation.
+- Tradeoff: client-side realtime writes stay limited; Firestore rules still need participant-only read coverage.
+
+## Use Completed Jobs For Skill Progress
+
+- What: completing an accepted job increments the worker's `skillProgress` for the job's primary skill tag.
+- Why: completed marketplace work should become the base for lightweight reputation.
+- Tradeoff: skill levels are early signals only; anti-gaming, disputes, and payment verification are not solved yet.
 
 ## Do Not Add Stripe Yet
 

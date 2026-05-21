@@ -11,21 +11,21 @@
 
 - Test email verification with a real Firebase project.
 - Move remaining money-affecting writes behind server routes.
-- Validate Firestore rules against real app flows.
+- Validate Firestore rules against real app flows, especially jobs, applications, and message thread reads.
 - Consolidate duplicate upload routes.
 
 ## Phase 2: Jobs-First Marketplace
 
-- Keep the lightweight poster review workflow for `jobApplications` working.
-- Keep application states visible: interested, shortlisted, rejected, accepted.
-- Show application status to worker and poster.
+- Keep the poster application lifecycle working: applied/interested, shortlisted, accepted, rejected, completed.
+- Keep status updates server-backed and visible to both worker and poster.
+- Keep completed jobs feeding worker skill-tag progression.
 - Decide who can post jobs: admin only, invited clients, or all verified users. [VERIFY]
 
 ## Phase 3: Messaging
 
-- Decide messaging model: admin-mediated, direct poster-worker, comments, or external handoff. [VERIFY]
-- Attach message threads to accepted/reviewed applications.
-- Add participant-only access rules.
+- Keep direct poster-worker threads tied to shortlisted/accepted applications.
+- Keep message sends server-backed and participant-checked.
+- Add participant-only Firestore read rules and message subcollection rules.
 - Add moderation visibility for admins.
 
 ## Phase 4: Payments And Payouts
@@ -45,4 +45,4 @@
 ## Next Recommended Feature
 
 - Add a manual QA checklist for the jobs marketplace loop.
-- It should cover post job, apply, poster review, worker status, and the current demo-safe limits.
+- It should cover post job, apply, shortlist, accept, reject, complete, message send, skill progress, and current demo-safe limits.

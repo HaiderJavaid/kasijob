@@ -6,18 +6,19 @@ KasiJobs is a full-stack marketplace showcase for small jobs and earning opportu
 
 ## Resume Version
 
-Built KasiJobs, a marketplace-style earning platform using Next.js App Router, React, Tailwind CSS, Firebase Auth, Firestore, Firebase Admin SDK, Cloudflare R2, and protected server routes. Delivered user flows for onboarding, task discovery, proof submission, beta job posting, applications, lightweight messaging, admin review, referral operations, and reward tracking.
+Built KasiJobs, a marketplace-style earning platform using Next.js App Router, React, Tailwind CSS, Firebase Auth, Firestore, Firebase Admin SDK, Cloudflare R2, and protected server routes. Delivered user flows for onboarding, task discovery, proof submission, beta job posting, application review, participant-based messaging, skill progression, admin review, referral operations, and reward tracking.
 
 ## Features To Mention
 
 - Firebase email/password auth and email verification gate.
 - Task listing, proof upload, and admin approval/rejection.
 - Wallet-style balance and transaction history.
-- Jobs listing, job detail, post-for-review, and apply/register-interest flow.
-- Lightweight job discussion threads.
+- Jobs listing, job detail, post-for-review, apply, shortlist, accept, reject, and complete flow.
+- Participant-based job messaging for shortlisted/accepted applications.
+- Skill-tag progression from completed jobs.
 - Custom admin tools for tasks, submissions, users, transactions, referrals, and tree view.
 - R2 signed uploads for avatars and proof images.
-- Server-side checks for protected uploads, postbacks, and several admin mutations.
+- Server-side checks for protected uploads, postbacks, job application status changes, message sends, and several admin mutations.
 
 ## Interview Angle
 
@@ -30,3 +31,4 @@ Built KasiJobs, a marketplace-style earning platform using Next.js App Router, R
 - Do not claim Stripe, escrow, real payouts, or production chat are implemented.
 - Do not claim the app is ready for real money.
 - Do not claim all Firestore writes are server-controlled.
+- Do not claim messaging moderation, notifications, or production-grade Firestore read rules are finished.

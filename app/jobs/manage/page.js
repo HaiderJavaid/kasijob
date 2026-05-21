@@ -12,6 +12,7 @@ import {
   UserCheck,
   UserMinus,
   Users,
+  MessageCircle,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -23,6 +24,7 @@ import {
 const actionConfig = [
   { status: "shortlisted", label: "Shortlist", icon: UserCheck, className: "bg-blue-600 text-white" },
   { status: "accepted", label: "Accept", icon: CheckCircle, className: "bg-green-600 text-white" },
+  { status: "completed", label: "Complete", icon: CheckCircle, className: "bg-kasi-dark text-white" },
   { status: "rejected", label: "Reject", icon: UserMinus, className: "bg-red-600 text-white" },
 ];
 
@@ -30,8 +32,11 @@ const statusStyles = {
   interested: "bg-yellow-100 text-yellow-800",
   shortlisted: "bg-blue-100 text-blue-800",
   accepted: "bg-green-100 text-green-800",
+  completed: "bg-emerald-100 text-emerald-800",
   rejected: "bg-red-100 text-red-800",
 };
+
+const terminalApplicationStatuses = new Set(["rejected", "completed"]);
 
 const formatBudget = (budget) => {
   const amount = Number(budget || 0);
@@ -105,15 +110,28 @@ export default function ManageJobsPage() {
 
           return {
             ...job,
+            status: result.jobStatus || job.status,
             applications: job.applications.map((application) =>
               application.id === applicationId
                 ? {
                     ...application,
                     status,
                     reviewStatus: `poster_${status}`,
+                    messagingState:
+                      result.messagingState ||
+                      (status === "rejected" || status === "completed" ? "closed" : "open"),
+                    messageThreadId: result.messageThreadId || null,
                     updatedAt: new Date(),
                   }
-                : application
+                : result.jobStatus === "matched" &&
+                    application.status === "shortlisted" &&
+                    application.messagingState === "open"
+                  ? {
+                      ...application,
+                      messagingState: "closed",
+                      updatedAt: new Date(),
+                    }
+                  : application
             ),
           };
         })
@@ -229,18 +247,43 @@ export default function ManageJobsPage() {
                             </span>
                           </div>
 
-                          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                          {application.messageThreadId ? (
+                            <Link
+                              href={`/messages/${application.messageThreadId}`}
+                              className="mt-4 inline-flex items-center gap-2 text-sm font-black text-kasi-dark"
+                            >
+                              <MessageCircle size={16} />
+                              {application.messagingState === "closed" ? "View closed conversation" : "Open conversation"}
+                            </Link>
+                          ) : null}
+
+                          <div className="mt-4 grid gap-2 sm:grid-cols-4">
                             {actionConfig.map((action) => {
                               const Icon = action.icon;
                               const isCurrentStatus = application.status === action.status;
                               const isUpdating = updatingApplicationId === application.id;
+                              const isCompleteBlocked = action.status === "completed" && application.status !== "accepted";
+                              const isAcceptedOnlyComplete =
+                                application.status === "accepted" && action.status !== "completed";
+                              const isTerminal = terminalApplicationStatuses.has(application.status);
+                              const isMatchedBlocked =
+                                job.status === "matched" &&
+                                application.status !== "accepted" &&
+                                action.status !== "completed";
 
                               return (
                                 <button
                                   key={action.status}
                                   type="button"
                                   onClick={() => handleStatusUpdate(job.id, application.id, action.status)}
-                                  disabled={isCurrentStatus || isUpdating}
+                                  disabled={
+                                    isCurrentStatus ||
+                                    isUpdating ||
+                                    isCompleteBlocked ||
+                                    isAcceptedOnlyComplete ||
+                                    isTerminal ||
+                                    isMatchedBlocked
+                                  }
                                   className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${action.className}`}
                                 >
                                   {isUpdating ? <Loader2 className="animate-spin" size={16} /> : <Icon size={16} />}

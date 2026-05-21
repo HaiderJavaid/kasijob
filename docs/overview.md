@@ -18,8 +18,9 @@
 - Auth: Firebase email/password login and registration.
 - Verification: email verification gate exists for protected app flows.
 - Tasks: task listing, proof submission, admin review, and reward crediting are the most complete workflow.
-- Jobs: listing, detail, post-for-review, apply/register-interest, poster review, and applicant status flows exist.
-- Messaging: lightweight demo threads exist under `/messages`; not production chat.
+- Jobs: listing, detail, post-for-review, apply, shortlist, accept, reject, complete, and applicant status flows exist.
+- Messaging: participant-based job threads open for shortlisted/accepted applications and close on rejection/completion.
+- Skills: completed jobs increment worker skill progress by primary skill tag.
 - Uploads: R2 signed uploads for avatars/proofs use server routes with Firebase ID token checks.
 - Leaderboard: ranks wallet balance for now, including task rewards and future job earnings. [VERIFY]
 - Admin: custom admin area exists for tasks, reviews, users, transactions, referrals, and tree view.
@@ -31,6 +32,7 @@
 - Tasks can stay as a temporary acquisition/reward tool until the marketplace is stronger.
 - Leaderboard should keep task income small but combine task and job income into one wallet ranking. [VERIFY]
 - Admin review should stay in the loop until trust, abuse handling, and payment responsibility are clear.
+- Job completion can power worker reputation through skill tags, but payment/ledger meaning is still separate. [VERIFY]
 
 ## Naming
 

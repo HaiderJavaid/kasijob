@@ -18,6 +18,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import {
   applicationStatuses,
+  canApplyToJob,
   getJobApplicationStatus,
   getJobById,
   submitJobApplication,
@@ -51,14 +52,11 @@ export default function JobDetailsPage() {
   const [applyLoading, setApplyLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const discussionHref =
-    job?.id === "sample-event-helper"
-      ? "/messages/sample-event-helper-thread"
-      : job?.id === "sample-logo-cafe"
-        ? "/messages/sample-logo-cafe-thread"
-        : "/messages";
   const appliedStatus =
     applicationStatuses[applicationStatus.status] || applicationStatuses.interested;
+  const isOwnJob = Boolean(currentUser?.uid && job?.posterId && currentUser.uid === job.posterId);
+  const canApply = canApplyToJob(job, currentUser);
+  const hasOpenThread = applicationStatus.messageThreadId && applicationStatus.messagingState === "open";
 
   useEffect(() => {
     let isMounted = true;
@@ -110,6 +108,8 @@ export default function JobDetailsPage() {
         applicationId: result.applicationId,
         source: result.source,
         status: result.status || "interested",
+        messageThreadId: result.messageThreadId || null,
+        messagingState: result.messagingState || "locked",
       });
       setMessage(
         result.duplicate
@@ -270,11 +270,11 @@ export default function JobDetailsPage() {
               <button
                 type="button"
                 onClick={handleApply}
-                disabled={applyLoading}
+                disabled={applyLoading || !canApply}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-kasi-dark py-4 font-black text-white shadow-lg transition hover:bg-black active:scale-95"
               >
                 {applyLoading ? <Loader2 size={20} className="animate-spin" /> : <UserCheck size={20} />}
-                {applyLoading ? "Registering..." : "Apply / Register Interest"}
+                {applyLoading ? "Registering..." : isOwnJob ? "Your posted job" : job.status === "matched" || job.status === "completed" ? "Job no longer accepting" : "Apply / Register Interest"}
               </button>
             ) : (
               <button
@@ -286,13 +286,15 @@ export default function JobDetailsPage() {
                 {appliedStatus.label}
               </button>
             )}
-            <Link
-              href={discussionHref}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-4 font-black text-kasi-dark shadow-sm transition active:scale-95"
-            >
-              <MessageCircle size={20} />
-              {discussionHref === "/messages" ? "Open Messages" : "Demo Messages"}
-            </Link>
+            {hasOpenThread ? (
+              <Link
+                href={`/messages/${applicationStatus.messageThreadId}`}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-4 font-black text-kasi-dark shadow-sm transition active:scale-95"
+              >
+                <MessageCircle size={20} />
+                Open Conversation
+              </Link>
+            ) : null}
             <Link
               href="/jobs/applications"
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-4 font-black text-kasi-dark shadow-sm transition active:scale-95 sm:col-span-2"

@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { getAllMessageThreads } from "@/lib/messages";
+import { getCurrentUser } from "@/lib/auth";
 
 const formatBudget = (budget) => {
   const amount = Number(budget || 0);
@@ -33,7 +34,7 @@ const formatUpdatedAt = (updatedAt) => {
   }
 };
 
-const getLastMessage = (thread) => thread.messages[thread.messages.length - 1]?.body || "No messages yet.";
+const getLastMessage = (thread) => thread.lastMessagePreview || thread.messages[thread.messages.length - 1]?.body || "No messages yet.";
 
 export default function MessagesPage() {
   const [threads, setThreads] = useState([]);
@@ -43,7 +44,8 @@ export default function MessagesPage() {
     let isMounted = true;
 
     async function loadThreads() {
-      const availableThreads = await getAllMessageThreads();
+      const authUser = await getCurrentUser();
+      const availableThreads = await getAllMessageThreads(authUser);
       if (isMounted) {
         setThreads(availableThreads);
         setLoading(false);
@@ -105,6 +107,21 @@ export default function MessagesPage() {
             <Loader2 className="mx-auto animate-spin text-kasi-dark" size={28} />
             <p className="mt-3 text-sm font-bold text-gray-500">Loading messages...</p>
           </div>
+        ) : threads.length === 0 ? (
+          <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
+            <MessageCircle className="mx-auto text-gray-300" size={34} />
+            <h2 className="mt-4 text-lg font-black text-kasi-dark">No private conversations yet</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-gray-500">
+              Conversations appear after a poster shortlists or accepts an application.
+            </p>
+            <Link
+              href="/jobs/applications"
+              className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-kasi-dark px-4 py-3 text-sm font-black text-white"
+            >
+              View applications
+              <ArrowRight size={16} />
+            </Link>
+          </div>
         ) : (
           <div className="space-y-4">
             {threads.map((thread) => (
@@ -147,7 +164,7 @@ export default function MessagesPage() {
                     {formatUpdatedAt(thread.updatedAt)}
                   </span>
                   <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-800">
-                    {thread.source === "sample" ? "Demo" : "Firestore"}
+                    {thread.state === "closed" ? "Closed" : thread.source === "sample" ? "Demo" : "Private"}
                   </span>
                 </div>
               </Link>

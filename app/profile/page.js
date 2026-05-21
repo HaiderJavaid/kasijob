@@ -3,19 +3,49 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { auth, db } from "../../lib/firebase"; 
-import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore"; 
+import { auth, db } from "../../lib/firebase";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { logoutUser } from "../../lib/auth";
-import { 
-  LogOut, Wallet, CreditCard, X, CheckCircle, Info, ShieldCheck, Briefcase, Clock, 
-  Gift, Users, Copy, Share2 
-} from "lucide-react"; 
+import {
+  LogOut, Wallet, CreditCard, X, CheckCircle, Info, ShieldCheck, Briefcase, Clock,
+  Users, Copy, MessageCircle, FileText, Star, Award, ArrowRight
+} from "lucide-react";
 import AvatarUpload from '@/components/AvatarUpload';
 import AppTutorial from "../../components/AppTutorial"; 
 
 import { getWalletStats, saveBankDetails } from "../../lib/billing"; 
 import { getUserSubmissions } from "../../lib/tasks"; 
+import { getPosterJobsWithApplications, getUserJobApplications } from "../../lib/jobs";
+import { getAllMessageThreads } from "../../lib/messages";
+
+const skillLevelStyles = {
+  base: "border-amber-200 bg-amber-50 text-amber-800",
+  silver: "border-slate-200 bg-slate-100 text-slate-700",
+  gold: "border-yellow-300 bg-yellow-100 text-yellow-900",
+};
+
+const skillLevelLabels = {
+  base: "Base",
+  silver: "Silver",
+  gold: "Gold",
+};
+
+const buildEarnedSkillTags = (skillProgress = {}) =>
+  Object.entries(skillProgress)
+    .map(([name, progress]) => ({
+      name,
+      level: progress?.level || "base",
+      completedCount: Number(progress?.completedCount || 0),
+    }))
+    .filter((skill) => skill.completedCount > 0 && skill.level !== "none")
+    .sort((firstSkill, secondSkill) => secondSkill.completedCount - firstSkill.completedCount);
+
+const countCompletedSkills = (skillProgress = {}) =>
+  Object.values(skillProgress).reduce(
+    (total, progress) => total + Number(progress?.completedCount || 0),
+    0
+  );
 
 function ProfileContent() {
   const router = useRouter();
@@ -29,6 +59,14 @@ function ProfileContent() {
   const [updatesCount, setUpdatesCount] = useState(0); 
   const [payableAmount, setPayableAmount] = useState(0);
   const [holdAmount, setHoldAmount] = useState(0);
+  const [marketplaceStats, setMarketplaceStats] = useState({
+    activeApplications: 0,
+    shortlisted: 0,
+    accepted: 0,
+    completed: 0,
+    postedJobs: 0,
+    conversations: 0,
+  });
   
   const [activeTab, setActiveTab] = useState("tasks"); 
   const [showBankModal, setShowBankModal] = useState(false);
@@ -72,7 +110,13 @@ function ProfileContent() {
         
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          setUser(userData);
+          const profileUser = {
+            ...userData,
+            uid: currentUser.uid,
+            email: userData.email || currentUser.email,
+            emailVerified: currentUser.emailVerified || Boolean(userData.emailVerified),
+          };
+          setUser(profileUser);
           if (userData.bankDetails) setBankDetails(userData.bankDetails);
 
           // Tutorial Check
@@ -82,24 +126,45 @@ function ProfileContent() {
               localStorage.removeItem('kasi_tour_progress');
           }
 
-          // Wallet Stats
           const currentBalance = userData.balance || 0;
-          const stats = await getWalletStats(currentUser.uid, currentBalance);
+          const [
+            stats,
+            tHistory,
+            refSnap,
+            applications,
+            postedJobs,
+            messageThreads,
+          ] = await Promise.all([
+            getWalletStats(currentUser.uid, currentBalance),
+            getUserSubmissions(currentUser.uid),
+            getDocs(query(collection(db, "users"), where("referredBy", "==", currentUser.uid))),
+            getUserJobApplications(currentUser),
+            getPosterJobsWithApplications(currentUser),
+            getAllMessageThreads(currentUser),
+          ]);
+
           setPayableAmount(stats.payable);
           setHoldAmount(stats.hold);
-
-          // Task History
-          const tHistory = await getUserSubmissions(currentUser.uid);
           setTasks(tHistory);
           setUpdatesCount(tHistory.filter(t => t.status === 'approved' || t.status === 'rejected').length);
-
-          // Load Referrals
-          const refQ = query(collection(db, "users"), where("referredBy", "==", currentUser.uid));
-          const refSnap = await getDocs(refQ);
           setReferrals(refSnap.docs.map(d => d.data()));
+          setMarketplaceStats({
+            activeApplications: applications.filter((application) => application.status !== "rejected").length,
+            shortlisted: applications.filter((application) => application.status === "shortlisted").length,
+            accepted: applications.filter((application) => application.status === "accepted").length,
+            completed: countCompletedSkills(userData.skillProgress),
+            postedJobs: postedJobs.length,
+            conversations: messageThreads.length,
+          });
 
         } else {
-          setUser({ email: currentUser.email, name: "User", uid: currentUser.uid, balance: 0 });
+          setUser({
+            email: currentUser.email,
+            emailVerified: currentUser.emailVerified,
+            name: "User",
+            uid: currentUser.uid,
+            balance: 0,
+          });
         }
       } catch (error) { console.error("Error fetching data:", error); } 
       finally { setLoading(false); }
@@ -132,6 +197,10 @@ function ProfileContent() {
   if (loading) return <div className="min-h-screen bg-kasi-gray flex items-center justify-center">Loading...</div>;
   if (!user) return null;
 
+  const displayName = user?.name || user?.email?.split('@')[0] || "Anonymous";
+  const earnedSkillTags = buildEarnedSkillTags(user?.skillProgress);
+  const isVerified = Boolean(user?.emailVerified);
+
   return (
     <div className="min-h-screen bg-kasi-gray text-gray-900 pb-24 font-sans">
        <AppTutorial run={runProfileTour} steps={profileSteps} onComplete={handleTourFinish} onStepChange={handleProfileStepChange} />
@@ -145,12 +214,115 @@ function ProfileContent() {
       </div>
 
       <div className="max-w-md mx-auto px-6 space-y-6">
-        <div className="flex items-center space-x-4">
-          <AvatarUpload user={user} onUpdate={(updates) => setUser({ ...user, ...updates })} />
-          <div>
-            <h2 className="text-xl font-bold text-kasi-dark">{user?.name || user?.email?.split('@')[0] || "Anonymous"}</h2>
-            <p className="text-kasi-subtle text-sm">{user?.email}</p>
+        <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100">
+          <div className="flex items-start gap-4">
+            <AvatarUpload user={user} onUpdate={(updates) => setUser({ ...user, ...updates })} />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-black text-kasi-dark truncate">{displayName}</h2>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black uppercase ${isVerified ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-800"}`}>
+                  {isVerified ? <CheckCircle size={12} /> : <Clock size={12} />}
+                  {isVerified ? "Verified" : "Verify email"}
+                </span>
+              </div>
+              <p className="text-kasi-subtle text-sm truncate">{user?.email}</p>
+              <p className="mt-2 text-xs leading-relaxed text-gray-500">
+                Your jobs marketplace profile tracks applications, poster activity, conversations, and earned skills.
+              </p>
+            </div>
           </div>
+
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl bg-kasi-dark p-3 text-white">
+              <p className="text-2xl font-black text-kasi-gold">{marketplaceStats.activeApplications}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-300">Active applications</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.shortlisted}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Shortlisted</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.accepted}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Accepted</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.completed}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Completed</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.postedJobs}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Posted jobs</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.conversations}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Conversations</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-black text-kasi-dark">Earned Skill Tags</h3>
+              <p className="mt-1 text-xs text-gray-500">Unlocked from completed marketplace jobs.</p>
+            </div>
+            <Award className="text-kasi-gold" size={24} />
+          </div>
+
+          {earnedSkillTags.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center">
+              <Star className="mx-auto text-gray-300" size={24} />
+              <p className="mt-2 text-xs font-bold text-gray-500">Complete accepted jobs to earn skill badges.</p>
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {earnedSkillTags.map((skill) => (
+                <span
+                  key={skill.name}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black ${skillLevelStyles[skill.level] || skillLevelStyles.base}`}
+                >
+                  <Star size={13} />
+                  {skill.name}
+                  <span className="text-[10px] uppercase opacity-70">
+                    {skillLevelLabels[skill.level] || skillLevelLabels.base} / {skill.completedCount}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-3">
+          <button onClick={() => router.push('/jobs/applications')} className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm border border-gray-100 active:scale-[0.99] transition">
+            <span className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kasi-dark text-kasi-gold"><FileText size={20} /></span>
+              <span>
+                <span className="block text-sm font-black text-kasi-dark">My Applications</span>
+                <span className="block text-xs text-gray-500">Track worker review status</span>
+              </span>
+            </span>
+            <ArrowRight className="text-gray-300" size={20} />
+          </button>
+          <button onClick={() => router.push('/jobs/manage')} className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm border border-gray-100 active:scale-[0.99] transition">
+            <span className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kasi-gold text-kasi-dark"><Briefcase size={20} /></span>
+              <span>
+                <span className="block text-sm font-black text-kasi-dark">Manage Posted Jobs</span>
+                <span className="block text-xs text-gray-500">Review applicants and matches</span>
+              </span>
+            </span>
+            <ArrowRight className="text-gray-300" size={20} />
+          </button>
+          <button onClick={() => router.push('/messages')} className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm border border-gray-100 active:scale-[0.99] transition">
+            <span className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><MessageCircle size={20} /></span>
+              <span>
+                <span className="block text-sm font-black text-kasi-dark">Messages</span>
+                <span className="block text-xs text-gray-500">Open job conversations</span>
+              </span>
+            </span>
+            <ArrowRight className="text-gray-300" size={20} />
+          </button>
         </div>
 
         {/* BALANCE CARD */}
@@ -176,7 +348,7 @@ function ProfileContent() {
                 
                 {/* Left: Text Info */}
                 <div className="text-center sm:text-left">
-                    <h3 className="text-base font-black text-gray-900">Invite Friends</h3>
+                    <h3 className="flex items-center justify-center gap-2 text-base font-black text-gray-900 sm:justify-start"><Users size={16} className="text-kasi-gold" /> Invite Friends</h3>
                     <p className="text-xs text-gray-500 mt-1">
                         Earn <b className="text-green-600">RM 2.00</b> for every new user you refer.
                     </p>

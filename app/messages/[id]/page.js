@@ -14,6 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { addMessageToThread, getMessageThreadById } from "@/lib/messages";
+import { getCurrentUser } from "@/lib/auth";
 
 const formatBudget = (budget) => {
   const amount = Number(budget || 0);
@@ -47,7 +48,8 @@ export default function MessageThreadPage() {
     let isMounted = true;
 
     async function loadThread() {
-      const selectedThread = await getMessageThreadById(params.id);
+      const authUser = await getCurrentUser();
+      const selectedThread = await getMessageThreadById(params.id, authUser);
 
       if (isMounted) {
         setThread(selectedThread);
@@ -81,15 +83,14 @@ export default function MessageThreadPage() {
     setIsSending(true);
     setNotice("");
 
-    const message = {
-      id: `local-${Date.now()}`,
-      authorName: "Demo worker",
-      authorRole: "worker",
-      body,
-      createdAt: new Date(),
-    };
-
     if (thread.source === "sample") {
+      const message = {
+        id: `local-${Date.now()}`,
+        authorName: "Demo worker",
+        authorRole: "worker",
+        body,
+        createdAt: new Date(),
+      };
       setThread((currentThread) => ({
         ...currentThread,
         messages: [...currentThread.messages, message],
@@ -101,7 +102,7 @@ export default function MessageThreadPage() {
       return;
     }
 
-    const result = await addMessageToThread(thread.id, message);
+    const result = await addMessageToThread(thread.id, { body });
 
     if (!result.success) {
       setNotice(result.error || "Could not send this message.");
@@ -115,7 +116,7 @@ export default function MessageThreadPage() {
       updatedAt: result.message.createdAt,
     }));
     setReply("");
-    setNotice("Message added to this Firestore thread.");
+    setNotice("Message sent.");
     setIsSending(false);
   };
 
@@ -247,12 +248,13 @@ export default function MessageThreadPage() {
             value={reply}
             onChange={(event) => setReply(event.target.value)}
             rows="2"
-            placeholder="Write a demo reply..."
+            placeholder={thread.state === "closed" ? "This conversation is closed" : "Write a reply..."}
+            disabled={thread.state === "closed"}
             className="min-h-[52px] flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
           />
           <button
             type="submit"
-            disabled={isSending || !reply.trim()}
+            disabled={isSending || !reply.trim() || thread.state === "closed"}
             className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-xl bg-kasi-gold text-kasi-dark shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Send message"
           >
