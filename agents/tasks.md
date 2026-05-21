@@ -11,7 +11,7 @@
 - Decide who can submit beta jobs. [VERIFY]
 - Validate Firestore rules for `jobs`, `jobApplications`, `messageThreads`, and message subcollections in the emulator.
 - Manually test poster application status updates and message sends against a real Firebase project.
-- Deploy or apply the `messageThreads` participant inbox composite index before real Firebase messaging QA.
+- Validate the participant inbox query against real Firebase data without relying on sample threads.
 - Consolidate `/api/upload` and `/api/r2`.
 - Move remaining money-like client writes behind server routes.
 - Add smoke tests or a manual QA checklist.
@@ -47,4 +47,5 @@
 - Jobs marketplace loop added with poster review and applicant status routes.
 - Runtime bug triage: fixed job posting `id: undefined` Firestore error, restored legacy leaderboard users without `emailVerified`, and made avatar loading fall back cleanly when protected R2 URL refresh fails.
 - Marketplace vertical slice updated with server-backed shortlist/accept/reject/complete, participant-based message threads, server-backed message sends, and completed-job skill progression.
-- Participant-only message thread rules and inbox index config added for the Firebase messaging slice.
+- Participant-only message thread rules added for the Firebase messaging slice.
+- Marketplace cleanup pass removed job sample fallbacks, moved Messages into bottom navigation, restored wallet-first profile layout, and relaxed avatar viewing for public profile images.

@@ -9,7 +9,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { logoutUser } from "../../lib/auth";
 import {
   LogOut, Wallet, CreditCard, X, CheckCircle, Info, ShieldCheck, Briefcase, Clock,
-  Users, Copy, MessageCircle, FileText, Star, Award, ArrowRight
+  Users, Copy, FileText, Star, Award, ArrowRight
 } from "lucide-react";
 import AvatarUpload from '@/components/AvatarUpload';
 import AppTutorial from "../../components/AppTutorial"; 
@@ -232,32 +232,22 @@ function ProfileContent() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            <div className="rounded-2xl bg-kasi-dark p-3 text-white">
-              <p className="text-2xl font-black text-kasi-gold">{marketplaceStats.activeApplications}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-300">Active applications</p>
+        </div>
+
+        {/* BALANCE CARD */}
+        <div className="bg-kasi-dark text-white p-6 rounded-3xl shadow-lg relative overflow-hidden tutorial-balance">
+            <button onClick={() => router.push('/wallet/history')} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition z-10"><Clock size={18} /></button>
+            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Wallet size={80} /></div>
+            <p className="text-gray-400 text-xs font-bold uppercase">Total Earnings</p>
+            <p className="text-4xl font-black mt-2 text-kasi-gold">RM {user?.balance?.toFixed(2) || "0.00"}</p>
+            <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-700">
+                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Payable (5th)</p><p className="text-xl font-bold text-white">RM {payableAmount.toFixed(2)}</p></div>
+                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1 flex items-center gap-1">On Hold <Info size={10}/></p><p className="text-xl font-bold text-white opacity-80">RM {holdAmount.toFixed(2)}</p></div>
             </div>
-            <div className="rounded-2xl bg-gray-50 p-3">
-              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.shortlisted}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Shortlisted</p>
-            </div>
-            <div className="rounded-2xl bg-gray-50 p-3">
-              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.accepted}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Accepted</p>
-            </div>
-            <div className="rounded-2xl bg-gray-50 p-3">
-              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.completed}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Completed</p>
-            </div>
-            <div className="rounded-2xl bg-gray-50 p-3">
-              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.postedJobs}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Posted jobs</p>
-            </div>
-            <div className="rounded-2xl bg-gray-50 p-3">
-              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.conversations}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Conversations</p>
-            </div>
-          </div>
+            <button onClick={() => setShowBankModal(true)} className={`mt-4 w-full py-3 rounded-xl transition flex items-center justify-center gap-2 font-bold text-sm tutorial-bank ${user.bankDetails ? "bg-gray-800 text-white hover:bg-gray-700" : "bg-white text-kasi-dark hover:bg-gray-200"}`}>
+                {user.bankDetails ? <><CheckCircle size={16} className="text-green-400"/> {user.bankDetails.bankName} Linked</> : <><CreditCard size={16}/> Add Bank / TNG</>}
+            </button>
+            <p className="text-[10px] text-center text-gray-500 mt-3">*Earnings after the 25th are held until next month.</p>
         </div>
 
         <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100">
@@ -313,32 +303,43 @@ function ProfileContent() {
             </span>
             <ArrowRight className="text-gray-300" size={20} />
           </button>
-          <button onClick={() => router.push('/messages')} className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm border border-gray-100 active:scale-[0.99] transition">
-            <span className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><MessageCircle size={20} /></span>
-              <span>
-                <span className="block text-sm font-black text-kasi-dark">Messages</span>
-                <span className="block text-xs text-gray-500">Open job conversations</span>
-              </span>
-            </span>
-            <ArrowRight className="text-gray-300" size={20} />
-          </button>
         </div>
 
-        {/* BALANCE CARD */}
-        <div className="bg-kasi-dark text-white p-6 rounded-3xl shadow-lg relative overflow-hidden tutorial-balance">
-            <button onClick={() => router.push('/wallet/history')} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition z-10"><Clock size={18} /></button>
-            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Wallet size={80} /></div>
-            <p className="text-gray-400 text-xs font-bold uppercase">Total Earnings</p>
-            <p className="text-4xl font-black mt-2 text-kasi-gold">RM {user?.balance?.toFixed(2) || "0.00"}</p>
-            <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-700">
-                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Payable (5th)</p><p className="text-xl font-bold text-white">RM {payableAmount.toFixed(2)}</p></div>
-                <div><p className="text-[10px] text-gray-400 font-bold uppercase mb-1 flex items-center gap-1">On Hold <Info size={10}/></p><p className="text-xl font-bold text-white opacity-80">RM {holdAmount.toFixed(2)}</p></div>
+        <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-black text-kasi-dark">Marketplace Activity</h3>
+              <p className="mt-1 text-xs text-gray-500">Applications, matches, and conversations from jobs.</p>
             </div>
-            <button onClick={() => setShowBankModal(true)} className={`mt-4 w-full py-3 rounded-xl transition flex items-center justify-center gap-2 font-bold text-sm tutorial-bank ${user.bankDetails ? "bg-gray-800 text-white hover:bg-gray-700" : "bg-white text-kasi-dark hover:bg-gray-200"}`}>
-                {user.bankDetails ? <><CheckCircle size={16} className="text-green-400"/> {user.bankDetails.bankName} Linked</> : <><CreditCard size={16}/> Add Bank / TNG</>}
-            </button>
-            <p className="text-[10px] text-center text-gray-500 mt-3">*Earnings after the 25th are held until next month.</p>
+            <Briefcase className="text-kasi-gold" size={24} />
+          </div>
+
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl bg-kasi-dark p-3 text-white">
+              <p className="text-2xl font-black text-kasi-gold">{marketplaceStats.activeApplications}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-300">Active applications</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.shortlisted}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Shortlisted</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.accepted}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Accepted</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.completed}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Completed</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.postedJobs}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Posted jobs</p>
+            </div>
+            <div className="rounded-2xl bg-gray-50 p-3">
+              <p className="text-2xl font-black text-kasi-dark">{marketplaceStats.conversations}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase leading-tight text-gray-500">Conversations</p>
+            </div>
+          </div>
         </div>
 
         {/* REFERRAL CARD */}

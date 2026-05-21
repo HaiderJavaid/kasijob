@@ -80,7 +80,7 @@
 
 - Firestore schema is implicit in code.
 - `firestore.rules` includes beta `jobApplications`, participant-only `messageThreads`, and nested message read coverage, but still needs emulator validation.
-- `firestore.indexes.json` includes the participant inbox index for `messageThreads`.
+- Message inbox queries avoid a composite index by querying participants first and sorting client-side.
 - `/api/r2` and `/api/upload` overlap; consolidate later.
 - Money-like updates still happen from more than one path.
 - Messaging is private to participants in the demo slice, but it is not moderated or notification-ready production chat yet.

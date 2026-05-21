@@ -229,6 +229,8 @@ export default function ManageJobsPage() {
                   ) : (
                     job.applications.map((application) => {
                       const status = applicationStatuses[application.status] || applicationStatuses.interested;
+                      const isSelfApplication =
+                        application.applicantId === currentUser?.uid || application.applicantId === job.posterId;
 
                       return (
                         <div key={application.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
@@ -257,6 +259,12 @@ export default function ManageJobsPage() {
                             </Link>
                           ) : null}
 
+                          {isSelfApplication ? (
+                            <div className="mt-4 rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-xs font-bold text-yellow-800">
+                              You posted this job, so you cannot review your own application.
+                            </div>
+                          ) : null}
+
                           <div className="mt-4 grid gap-2 sm:grid-cols-4">
                             {actionConfig.map((action) => {
                               const Icon = action.icon;
@@ -282,7 +290,8 @@ export default function ManageJobsPage() {
                                     isCompleteBlocked ||
                                     isAcceptedOnlyComplete ||
                                     isTerminal ||
-                                    isMatchedBlocked
+                                    isMatchedBlocked ||
+                                    isSelfApplication
                                   }
                                   className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${action.className}`}
                                 >

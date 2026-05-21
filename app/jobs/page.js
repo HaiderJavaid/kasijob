@@ -6,14 +6,11 @@ import {
   ArrowRight,
   Briefcase,
   Clock,
-  FileText,
   Loader2,
   MapPin,
-  MessageCircle,
   Plus,
   ShieldCheck,
   Sparkles,
-  Users,
 } from "lucide-react";
 import { getAllJobs } from "@/lib/jobs";
 
@@ -27,7 +24,6 @@ const statusLabel = {
   open: "Open",
   interested: "Interested",
   admin_reviewed_beta: "Admin-reviewed beta",
-  beta_sample: "Open sample",
   admin_beta: "Admin-reviewed beta",
 };
 
@@ -72,27 +68,6 @@ export default function JobsPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/jobs/applications"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-black text-white transition active:scale-95"
-              >
-                <FileText size={18} />
-                My applications
-              </Link>
-              <Link
-                href="/jobs/manage"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-black text-white transition active:scale-95"
-              >
-                <Users size={18} />
-                Manage
-              </Link>
-              <Link
-                href="/messages"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-black text-white transition active:scale-95"
-              >
-                <MessageCircle size={18} />
-                Messages
-              </Link>
-              <Link
                 href="/jobs/post"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-kasi-gold px-4 py-3 text-sm font-black text-kasi-dark shadow-lg transition active:scale-95"
               >
@@ -123,6 +98,21 @@ export default function JobsPage() {
           <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
             <Loader2 className="mx-auto animate-spin text-kasi-dark" size={28} />
             <p className="mt-3 text-sm font-bold text-gray-500">Loading jobs...</p>
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
+            <Briefcase className="mx-auto text-gray-300" size={42} />
+            <h2 className="mt-4 text-lg font-black text-kasi-dark">No live jobs yet</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-gray-500">
+              Jobs posted for review will appear here once your Firebase data has real marketplace listings.
+            </p>
+            <Link
+              href="/jobs/post"
+              className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-kasi-dark px-4 py-3 text-sm font-black text-white"
+            >
+              <Plus size={16} />
+              Post a job
+            </Link>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">

@@ -68,7 +68,6 @@ export async function POST(request) {
 
 export async function GET(request) {
   try {
-    const { uid } = await requireServerUser(request);
     const { searchParams } = new URL(request.url);
     const key = searchParams.get("key");
 
@@ -81,9 +80,21 @@ export async function GET(request) {
     }
 
     const isAvatarKey = key.startsWith("avatars/");
-    const isOwnedProofKey = key.startsWith(`proofs/${uid}/`);
 
-    if (!isAvatarKey && !isOwnedProofKey) {
+    if (!isAvatarKey) {
+      const { uid } = await requireServerUser(request);
+      const isOwnedProofKey = key.startsWith(`proofs/${uid}/`);
+
+      if (isOwnedProofKey) {
+        const command = new GetObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME,
+          Key: key,
+        });
+        const viewUrl = await getSignedUrl(r2, command, { expiresIn: 3600 });
+
+        return NextResponse.json({ viewUrl });
+      }
+
       const role = await getServerUserRole(uid);
 
       if (role !== "admin") {

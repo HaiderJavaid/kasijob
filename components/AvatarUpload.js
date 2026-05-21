@@ -13,10 +13,7 @@ export default function AvatarUpload({ user, onUpdate }) {
   // --- NEW: FETCH FRESH URL ON MOUNT ---
   useEffect(() => {
     const fetchFreshUrl = async () => {
-      // 1. If we just uploaded a new one (local state), use that
-      if (displayUrl) return;
-
-      // 2. If user has an avatarKey in Firestore, fetch a fresh link
+      // 1. If user has an avatarKey in Firestore, fetch a fresh link
       if (user?.avatarKey) {
         try {
           const res = await authFetch(`/api/r2?key=${user.avatarKey}`);
@@ -32,7 +29,7 @@ export default function AvatarUpload({ user, onUpdate }) {
         }
       }
 
-      // 3. Fallback to Auth photoURL if no key exists yet
+      // 2. Fallback to Auth photoURL if no key exists yet
       if (user?.photoURL) {
         setDisplayUrl(user.photoURL);
       }
@@ -145,7 +142,12 @@ export default function AvatarUpload({ user, onUpdate }) {
         style={{ backgroundColor: !displayUrl ? stringToColor(finalName) : 'transparent' }}
       >
         {displayUrl ? (
-          <img src={displayUrl} alt="Profile" className="w-full h-full object-cover" />
+          <img
+            src={displayUrl}
+            alt="Profile"
+            className="w-full h-full object-cover"
+            onError={() => setDisplayUrl(null)}
+          />
         ) : (
           <span className="text-xl font-black text-white tracking-wider">
             {getInitials(finalName)}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, Zap, User, Trophy } from "lucide-react";
+import { Briefcase, MessageCircle, Zap, User, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { collection, query, where, getDocs, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase"; // Adjust path if needed (e.g. @/lib/firebase)
@@ -10,8 +10,8 @@ import { db } from "@/lib/firebase"; // Adjust path if needed (e.g. @/lib/fireba
 export default function BottomNav() {
   const pathname = usePathname();
   const [hasNotification, setHasNotification] = useState(false);
-  const navRoutes = ["/jobs", "/tasks", "/leaderboard", "/profile"];
-  const shouldShowNav = navRoutes.includes(pathname);
+  const navRoutes = ["/jobs", "/messages", "/tasks", "/leaderboard", "/profile"];
+  const shouldShowNav = navRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
   // --- GLOBAL NOTIFICATION CHECKER ---
   useEffect(() => {
@@ -78,11 +78,11 @@ export default function BottomNav() {
     return null;
   }
 
-  const isActive = (path) => pathname === path;
+  const isActive = (path) => pathname === path || pathname.startsWith(`${path}/`);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[999] flex justify-center pb-4 pt-2 bg-gradient-to-t from-black/20 to-transparent pointer-events-none">
-      <nav className="bg-kasi-dark/95 backdrop-blur-md text-white border border-white/10 rounded-full px-6 py-3 shadow-float pointer-events-auto flex items-center gap-8 mb-4 max-w-[90%] mx-auto relative">
+      <nav className="bg-kasi-dark/95 backdrop-blur-md text-white border border-white/10 rounded-full px-5 py-3 shadow-float pointer-events-auto flex items-center gap-5 mb-4 max-w-[94%] mx-auto relative">
 
         {/* JOBS TAB */}
         <Link href="/jobs" className="flex flex-col items-center gap-1 group relative">
@@ -91,6 +91,16 @@ export default function BottomNav() {
           </div>
           <span className={`text-[10px] font-medium ${isActive('/jobs') ? 'text-kasi-gold' : 'text-gray-500'}`}>
             Jobs
+          </span>
+        </Link>
+
+        {/* MESSAGES TAB */}
+        <Link href="/messages" className="flex flex-col items-center gap-1 group relative">
+          <div className={`p-2 rounded-full transition-all duration-300 ${isActive('/messages') ? 'bg-kasi-gold text-kasi-dark' : 'text-gray-400 group-hover:text-white'}`}>
+            <MessageCircle size={20} strokeWidth={2.5} />
+          </div>
+          <span className={`text-[10px] font-medium ${isActive('/messages') ? 'text-kasi-gold' : 'text-gray-500'}`}>
+            Messages
           </span>
         </Link>
 

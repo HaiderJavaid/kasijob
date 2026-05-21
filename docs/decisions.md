@@ -34,7 +34,7 @@
 
 - What: job application threads store poster/worker participant IDs and open for shortlisted or accepted applications.
 - Why: messaging should follow the marketplace lifecycle instead of being a public/demo thread concept.
-- Tradeoff: Firestore indexes/rules must be deployed and validated; moderation and notifications still need production hardening.
+- Tradeoff: Firestore rules must be deployed and validated; moderation and notifications still need production hardening.
 
 ## Keep Message Sends Server-Backed
 
