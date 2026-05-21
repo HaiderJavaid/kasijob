@@ -10,6 +10,7 @@ import { stringToColor, getInitials } from "../../lib/profilePicture";
 import { Crown, Loader2, Trophy } from "lucide-react"; // Added Trophy for fallback
 import AppTutorial from "../../components/AppTutorial"; 
 import { db } from "../../lib/firebase"; 
+import { authFetch } from "../../lib/client/auth";
 import { doc, getDoc } from "firebase/firestore";
 
 // --- SMART SAFE AVATAR ---
@@ -22,7 +23,7 @@ const SafeAvatar = ({ user, className }) => {
         const fetchFreshUrl = async () => {
             if (user?.avatarKey) {
                 try {
-                    const res = await fetch(`/api/r2?key=${user.avatarKey}`);
+                    const res = await authFetch(`/api/r2?key=${user.avatarKey}`);
                     const data = await res.json();
                     if (data.viewUrl && isMounted) {
                         setDisplayUrl(data.viewUrl);

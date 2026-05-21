@@ -139,7 +139,7 @@ export default function RegisterPage() {
         }
 
         setStep(4);
-        setTimeout(() => router.push("/tasks"), 4000);
+        setTimeout(() => router.push("/verify-email?next=/tasks"), 1200);
       } else {
         alert("Registration failed: " + result.error);
         setIsLoading(false);
@@ -307,7 +307,7 @@ export default function RegisterPage() {
             <p className="text-gray-400 mb-4">Account created successfully.</p>
             <div className="bg-white/10 p-4 rounded-xl border border-white/20 max-w-xs mx-auto">
                 <p className="text-sm font-bold text-[#FFD700] mb-1">Check your inbox!</p>
-                <p className="text-xs text-gray-300">We sent a verification link to {formData.email}. Please verify to unlock all tasks.</p>
+                <p className="text-xs text-gray-300">We sent a verification link to {formData.email}. Opening your verification screen now.</p>
             </div>
         </div>
       )}

@@ -18,6 +18,11 @@ export default function LoginPage() {
     const result = await loginUser(formData.get("email"), formData.get("password"));
 
     if (result.success) {
+      if (!result.user?.emailVerified) {
+        router.push("/verify-email?next=/tasks");
+        return;
+      }
+
       // Check role from result (assuming loginUser returns user data) 
       // OR fetch it briefly. For now, we redirect to tasks, and the layout/middleware handles protection.
       if (result.user?.role === 'admin') {

@@ -47,6 +47,11 @@ export default function StreakBoard({ user, onUpdate }) {
 
   const handleClaim = async () => {
     if (!user || !canClaim) return;
+    if (!user.emailVerified) {
+      alert("Please verify your email before claiming rewards.");
+      return;
+    }
+
     setLoading(true);
     
     // Optimistic Update
@@ -140,12 +145,12 @@ export default function StreakBoard({ user, onUpdate }) {
                 onClick={handleClaim} 
                 disabled={!canClaim || loading}
                 className={`px-5 py-2.5 rounded-xl font-black text-xs shadow-lg transition-all active:scale-95 flex items-center gap-2 ${
-                    canClaim 
+                    canClaim && user?.emailVerified
                     ? "bg-kasi-dark text-white hover:bg-black hover:shadow-xl shadow-gray-200" 
                     : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200"
                 }`}
             >
-                {loading ? "..." : canClaim ? "Claim Reward" : <><Clock size={14}/> {timerString || "Wait..."}</>}
+                {loading ? "..." : !user?.emailVerified ? "Verify Email" : canClaim ? "Claim Reward" : <><Clock size={14}/> {timerString || "Wait..."}</>}
             </button>
         </div>
 

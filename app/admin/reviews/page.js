@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 // KEEP your existing imports
-import { getPendingSubmissions, reviewSubmission, getTaskById } from "../../../lib/tasks"; // Make sure getTaskById is exported from here!
+import { getPendingSubmissions, getTaskById } from "../../../lib/tasks"; // Make sure getTaskById is exported from here!
+import { reviewSubmission } from "../../../lib/client/admin";
 import { useRouter } from "next/navigation";
+import { authFetch } from "../../../lib/client/auth";
 // ADD these new icons
 import { ArrowLeft, CheckCircle, XCircle, Eye, FileText, X, ExternalLink, Loader2 } from "lucide-react";
 
@@ -15,14 +17,21 @@ export default function AdminReviewPage() {
   const [viewImage, setViewImage] = useState(null);
   const [viewTask, setViewTask] = useState(null);
 
-  useEffect(() => { loadData(); }, []);
-
   const loadData = async () => {
     setLoading(true);
     const data = await getPendingSubmissions();
     setSubmissions(data);
     setLoading(false);
   };
+
+  useEffect(() => {
+    const initData = async () => {
+      const data = await getPendingSubmissions();
+      setSubmissions(data);
+      setLoading(false);
+    };
+    initData();
+  }, []);
 
   // --- NEW FUNCTION: Handle Viewing Private R2 Images ---
   const handleViewProof = async (proofString) => {
@@ -33,7 +42,7 @@ export default function AdminReviewPage() {
 
     // If it's a file key, get the secure link
     try {
-      const res = await fetch(`/api/r2?key=${proofString}`);
+      const res = await authFetch(`/api/r2?key=${proofString}`);
       const data = await res.json();
       if (data.viewUrl) setViewImage(data.viewUrl);
       else alert("Error: Could not retrieve image link.");

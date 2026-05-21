@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { auth, db } from "../../lib/firebase"; 
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore"; 
 import { onAuthStateChanged } from "firebase/auth";
+import { logoutUser } from "../../lib/auth";
 import { 
   LogOut, Wallet, CreditCard, X, CheckCircle, Info, ShieldCheck, Briefcase, Clock, 
   Gift, Users, Copy, Share2 
@@ -123,6 +124,11 @@ function ProfileContent() {
       alert("Referral Code Copied!");
   };
 
+  const handleSignOut = async () => {
+      await logoutUser();
+      router.push("/login");
+  };
+
   if (loading) return <div className="min-h-screen bg-kasi-gray flex items-center justify-center">Loading...</div>;
   if (!user) return null;
 
@@ -134,7 +140,7 @@ function ProfileContent() {
       <div className="bg-white px-6 py-6 sticky top-0 z-20 shadow-sm mb-6">
         <div className="flex justify-between items-center max-w-md mx-auto">
           <h1 className="text-2xl font-black text-kasi-dark">Profile</h1>
-          <button onClick={() => auth.signOut()} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 text-gray-600 hover:text-red-500 transition"><LogOut size={20} /></button>
+          <button onClick={handleSignOut} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 text-gray-600 hover:text-red-500 transition"><LogOut size={20} /></button>
         </div>
       </div>
 
@@ -248,7 +254,7 @@ function ProfileContent() {
                             <option value="Maybank">Maybank</option>
                             <option value="CIMB">CIMB Bank</option>
                             <option value="Public Bank">Public Bank</option>
-                            <option value="TNG">Touch 'n Go E-Wallet</option>
+                            <option value="TNG">Touch &apos;n Go E-Wallet</option>
                             <option value="Hong Leong">Hong Leong Bank</option>
                             <option value="RHB">RHB Bank</option>
                         </select>

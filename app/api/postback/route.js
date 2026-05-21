@@ -1,52 +1,41 @@
-import { db } from "@/lib/firebase"; // Ensure this points to your firebase config
-import { doc, runTransaction, increment } from "firebase/firestore";
 import { NextResponse } from "next/server";
 
-export async function GET(request) {
-  // 1. Parse the URL parameters from AdGem
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("player_id"); // AdGem sends 'player_id'
-  const amount = parseFloat(searchParams.get("amount")); // The reward
-  const offerId = searchParams.get("offer_id"); // Unique offer ID
-  const ip = searchParams.get("ip"); 
+import { PostbackAuthError, processOfferwallPostback, requireTrustedPostback } from "@/lib/server/postbacks";
 
-  // 2. Validate
-  if (!userId || !amount) {
-    return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
-  }
+export const runtime = "nodejs";
+
+const PROVIDER = "AdGem";
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
 
   try {
-    // 3. Update User Balance safely using a Transaction
-    await runTransaction(db, async (transaction) => {
-      const userRef = doc(db, "users", userId);
-      const userDoc = await transaction.get(userRef);
+    requireTrustedPostback(searchParams);
 
-      if (!userDoc.exists()) {
-        throw "User does not exist";
-      }
+    const userId = searchParams.get("player_id");
+    const amount = Number(searchParams.get("amount"));
+    const offerId = searchParams.get("offer_id");
+    const ip = searchParams.get("ip");
 
-      // Add money to balance
-      transaction.update(userRef, {
-        balance: increment(amount)
-      });
+    if (!userId || !offerId || !Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: "Missing or invalid parameters." }, { status: 400 });
+    }
 
-      // Log the transaction history (Optional but recommended)
-      const newTxRef = doc(collection(db, "transactions"));
-      transaction.set(newTxRef, {
-        userId,
-        amount,
-        type: "offerwall",
-        source: "AdGem",
-        offerId,
-        date: new Date()
-      });
+    await processOfferwallPostback({
+      provider: PROVIDER,
+      userId,
+      amount,
+      offerId,
+      ip,
     });
 
-    // 4. Respond "1" or "OK" (AdGem expects a 200 OK)
     return new NextResponse("1", { status: 200 });
-
   } catch (error) {
-    console.error("Postback Error:", error);
+    if (error instanceof PostbackAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
+    console.error("Postback error:", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }

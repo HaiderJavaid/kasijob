@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { getReferralTree, manualLinkUser, unlinkUser } from "../../../lib/referralUtils";
+import { getReferralTree } from "../../../lib/referralUtils";
+import { manualLinkUserAction, unlinkUserAction } from "../../../lib/client/admin";
 import { ArrowLeft, Network, List, Move, X, Check, Unlink, ZoomIn, ZoomOut, Maximize, ChevronDown, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -150,7 +151,14 @@ export default function AdminTreePage() {
         setLoading(false);
     };
 
-    useEffect(() => { loadData(); }, []);
+    useEffect(() => {
+        const initData = async () => {
+            const data = await getReferralTree();
+            setTreeData(data);
+            setLoading(false);
+        };
+        initData();
+    }, []);
 
     // --- LOGIC (Reparenting & Unlinking) ---
     const handleNodeClick = async (user) => {
@@ -165,9 +173,15 @@ export default function AdminTreePage() {
             // Select Parent
             if (user.id === selectedChild.id) { setSelectedChild(null); return; }
             if (confirm(`Move "${selectedChild.name}" to be under "${user.name}"?`)) {
-                const res = await manualLinkUser(selectedChild.email, user.referralCode);
-                if (res.success) { alert("Moved!"); setSelectedChild(null); setMoveMode(false); loadData(); }
-                else alert("Error: " + res.error);
+                try {
+                    await manualLinkUserAction(selectedChild.email, user.referralCode);
+                    alert("Moved!");
+                    setSelectedChild(null);
+                    setMoveMode(false);
+                    loadData();
+                } catch (error) {
+                    alert("Error: " + error.message);
+                }
             }
         }
     };
@@ -175,9 +189,15 @@ export default function AdminTreePage() {
     const handleMakeRoot = async () => {
         if (!selectedChild) return;
         if (confirm(`Unlink "${selectedChild.name}" from their parent?`)) {
-            const res = await unlinkUser(selectedChild.email);
-            if (res.success) { alert("Unlinked!"); setSelectedChild(null); setMoveMode(false); loadData(); }
-            else alert("Error: " + res.error);
+            try {
+                await unlinkUserAction(selectedChild.email);
+                alert("Unlinked!");
+                setSelectedChild(null);
+                setMoveMode(false);
+                loadData();
+            } catch (error) {
+                alert("Error: " + error.message);
+            }
         }
     };
 

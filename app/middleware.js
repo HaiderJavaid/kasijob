@@ -6,7 +6,7 @@ export function middleware(request) {
 
   // 2. Define Public Paths (Anyone can see these)
   // We include '/' (landing), '/login', '/register', and static assets
-  const isPublicPath = path === '/' || path === '/login' || path === '/register';
+  const isPublicPath = path === '/' || path === '/login' || path === '/register' || path === '/verify-email';
 
   // 3. Check for Auth Token
   // Firebase auth tokens are usually stored in cookies if you set them up that way,
@@ -37,7 +37,7 @@ export function middleware(request) {
   }
 
   // If visiting login/register BUT already has token -> Redirect to Profile/Tasks
-  if (isPublicPath && token && path !== '/') {
+  if (isPublicPath && token && path !== '/' && path !== '/verify-email') {
     return NextResponse.redirect(new URL('/tasks', request.url));
   }
 }
@@ -48,8 +48,10 @@ export const config = {
     '/',
     '/login',
     '/register',
+    '/verify-email',
     '/tasks',
-    '/jobs',
+    '/jobs/:path*',
+    '/messages/:path*',
     '/leaderboard',
     '/profile',
     '/admin/:path*'

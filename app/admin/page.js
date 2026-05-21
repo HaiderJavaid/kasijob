@@ -4,8 +4,11 @@ import { db } from "../../lib/firebase";
 import { collection, getCountFromServer, query, where } from "firebase/firestore";
 import { Users, CheckCircle, DollarSign, Clock, Network, Link as LinkIcon, RefreshCcw } from "lucide-react";
 import Link from "next/link";
-import { backfillReferralCodes, manualLinkUser } from "../../lib/referralUtils";
-import { generateRetroactiveRewards, syncBalancesToLedger } from "../../lib/payoutUtils";
+import {
+  backfillReferralCodesAction,
+  manualLinkUserAction,
+  runReferralPayoutSyncAction,
+} from "../../lib/client/admin";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ users: 0, pending: 0, activeTasks: 0 });
@@ -31,22 +34,34 @@ export default function AdminDashboard() {
 
   const handleBackfill = async () => {
       if(!confirm("Scan all users and generate codes for those missing them?")) return;
-      const count = await backfillReferralCodes();
-      alert(`Done! Updated ${count} users.`);
+      try {
+        const data = await backfillReferralCodesAction();
+        alert(`Done! Updated ${data.count || 0} users.`);
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
   };
 
   const handleManualLink = async (e) => {
       e.preventDefault();
-      const res = await manualLinkUser(linkData.email, linkData.code);
-      if(res.success) { alert("Linked successfully!"); setShowLinkModal(false); setLinkData({email:"", code:""}); }
-      else alert("Error: " + res.error);
+      try {
+        await manualLinkUserAction(linkData.email, linkData.code);
+        alert("Linked successfully!");
+        setShowLinkModal(false);
+        setLinkData({email:"", code:""});
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
   };
 
   const handlePayoutSync = async () => {
       if(!confirm("⚠️ This will generate payments for ALL users based on the current tree. Ensure the tree is correct first!")) return;
-      
-      const res = await generateRetroactiveRewards();
-      alert(`Payout Complete!\nUpdated Users: ${res.updated}\nTotal Paid: RM ${res.totalPaid.toFixed(2)}`);
+      try {
+        const data = await runReferralPayoutSyncAction();
+        alert(`Payout Complete!\nUpdated Users: ${data.updated}\nTotal Paid: RM ${data.totalPaid.toFixed(2)}`);
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
   };
 
   return (

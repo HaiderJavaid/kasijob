@@ -8,6 +8,7 @@ import { getActiveTasks, submitTaskProof } from "../../lib/tasks";
 import AppTutorial from "../../components/AppTutorial"; 
 import StreakBoard from "../../components/StreakBoard"; 
 import { db } from "../../lib/firebase"; 
+import { authFetch } from "../../lib/client/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 
@@ -47,7 +48,7 @@ function TasksContent() {
       content: (
         <div className="text-center">
           <h2 className="text-xl font-black mb-2">Welcome to KasiJobs! 🚀</h2>
-          <p className="text-sm">Let's show you how to complete your first task.</p>
+          <p className="text-sm">Let&apos;s show you how to complete your first task.</p>
         </div>
       ),
       disableBeacon: true,
@@ -137,14 +138,19 @@ function TasksContent() {
         const authUser = await getCurrentUser();
         
         if (authUser) {
+            if (!authUser.emailVerified) {
+                router.replace("/verify-email?next=/tasks");
+                return;
+            }
+
             const userRef = doc(db, "users", authUser.uid);
             const userSnap = await getDoc(userRef);
             
             // Fix: Define userData here
-            let userData = { ...authUser }; 
+            let userData = { ...authUser, uid: authUser.uid, email: authUser.email, emailVerified: authUser.emailVerified };
 
             if (userSnap.exists()) {
-                userData = { ...authUser, ...userSnap.data() };
+                userData = { ...authUser, ...userSnap.data(), uid: authUser.uid, email: authUser.email, emailVerified: authUser.emailVerified };
             }
             
             setUser(userData); 
@@ -160,7 +166,7 @@ function TasksContent() {
       } catch (error) { console.error(error); } finally { setLoading(false); }
     };
     initData();
-  }, []);
+  }, [router]);
 
   // 4. TUTORIAL STEP LOGIC
   const handleTutorialStepChange = async (nextIndex) => {
@@ -216,7 +222,7 @@ function TasksContent() {
     if (!file) return;
     setIsUploadingFile(true);
     try {
-      const res = await fetch('/api/r2', { method: 'POST', body: JSON.stringify({ filename: file.name, fileType: file.type, folder: 'proofs' }) });
+      const res = await authFetch('/api/r2', { method: 'POST', body: JSON.stringify({ filename: file.name, fileType: file.type, folder: 'proofs' }) });
       const { uploadUrl, fileKey } = await res.json();
       await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
       setProofFileKey(fileKey);
@@ -231,6 +237,10 @@ function TasksContent() {
     }
     const finalProof = proofFileKey || proofInput;
     if (!finalProof) return alert("Please provide proof!");
+    if (!user?.emailVerified) {
+      router.replace("/verify-email?next=/tasks");
+      return;
+    }
     
     setIsSubmitting(true);
     const result = await submitTaskProof(user.uid, selectedTask.id, selectedTask.title, selectedTask.reward, finalProof, selectedTask.readableId);

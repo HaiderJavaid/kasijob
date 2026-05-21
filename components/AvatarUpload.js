@@ -4,6 +4,7 @@ import { Camera, Trash2, Loader2 } from 'lucide-react';
 import { updateProfile } from 'firebase/auth'; 
 import { doc, updateDoc } from 'firebase/firestore'; 
 import { auth, db } from '@/lib/firebase'; 
+import { authFetch } from '@/lib/client/auth';
 
 export default function AvatarUpload({ user, onUpdate }) {
   const [uploading, setUploading] = useState(false);
@@ -18,14 +19,16 @@ export default function AvatarUpload({ user, onUpdate }) {
       // 2. If user has an avatarKey in Firestore, fetch a fresh link
       if (user?.avatarKey) {
         try {
-          const res = await fetch(`/api/r2?key=${user.avatarKey}`);
-          const data = await res.json();
-          if (data.viewUrl) {
-             setDisplayUrl(data.viewUrl);
-             return;
+          const res = await authFetch(`/api/r2?key=${user.avatarKey}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.viewUrl) {
+               setDisplayUrl(data.viewUrl);
+               return;
+            }
           }
         } catch (e) {
-          console.error("Failed to load avatar", e);
+          console.warn("Falling back after avatar URL refresh failed:", e);
         }
       }
 
@@ -73,7 +76,7 @@ export default function AvatarUpload({ user, onUpdate }) {
     setUploading(true);
     try {
       // 1. Get Upload Link
-      const res = await fetch('/api/r2', {
+      const res = await authFetch('/api/r2', {
         method: 'POST',
         body: JSON.stringify({ filename: file.name, fileType: file.type, folder: 'avatars' })
       });
@@ -83,7 +86,7 @@ export default function AvatarUpload({ user, onUpdate }) {
       await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
 
       // 3. Get FRESH View URL (for immediate display)
-      const viewRes = await fetch(`/api/r2?key=${fileKey}`);
+      const viewRes = await authFetch(`/api/r2?key=${fileKey}`);
       const { viewUrl } = await viewRes.json();
 
       // 4. Update Firebase Auth (Session)

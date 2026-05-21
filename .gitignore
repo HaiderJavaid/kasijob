@@ -29,10 +29,17 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.next_dev.log
 
 # env files (can opt-in for committing if needed)
 .env.local
 .env*
+!.env.example
+
+# next-pwa generated at build time
+/public/sw.js
+/public/workbox-*.js
+/public/swe-worker-*.js
 
 # vercel
 .vercel

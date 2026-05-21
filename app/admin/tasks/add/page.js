@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { addTask } from "../../../../lib/tasks"; 
+import { createTaskAction } from "../../../../lib/client/admin";
 import { 
   ArrowLeft, Plus, Clock, Globe, FileText, List,
   Instagram, Facebook, Youtube, Twitter, Music2 
@@ -31,13 +31,12 @@ export default function AddTaskPage() {
       count: 0
     };
 
-    const result = await addTask(newTask);
-
-    if (result.success) {
+    try {
+      await createTaskAction(newTask);
       alert("Task Created Successfully!");
       router.push("/admin/tasks"); 
-    } else {
-      alert("Error: " + result.error);
+    } catch (error) {
+      alert("Error: " + error.message);
     }
     setLoading(false);
   };

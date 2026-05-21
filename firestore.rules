@@ -1,0 +1,173 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function currentUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && currentUserDoc().data.role == "admin";
+    }
+
+    function validJobApplicationCreate() {
+      return request.resource.data.keys().hasOnly([
+          "jobId",
+          "jobTitle",
+          "jobSource",
+          "applicantId",
+          "applicantEmail",
+          "applicantName",
+          "posterId",
+          "status",
+          "reviewStatus",
+          "createdAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "jobId",
+          "jobTitle",
+          "jobSource",
+          "applicantId",
+          "status",
+          "reviewStatus",
+          "createdAt"
+        ])
+        && request.resource.data.jobId is string
+        && exists(/databases/$(database)/documents/jobs/$(request.resource.data.jobId))
+        && request.resource.data.jobTitle is string
+        && request.resource.data.jobSource is string
+        && request.resource.data.applicantId == request.auth.uid
+        && (!("applicantEmail" in request.resource.data)
+          || request.resource.data.applicantEmail == null
+          || request.resource.data.applicantEmail is string)
+        && (!("applicantName" in request.resource.data)
+          || request.resource.data.applicantName == null
+          || request.resource.data.applicantName is string)
+        && (!("posterId" in request.resource.data)
+          || request.resource.data.posterId == null
+          || request.resource.data.posterId is string)
+        && request.resource.data.status == "interested"
+        && request.resource.data.reviewStatus == "admin_reviewed_beta"
+        && request.resource.data.createdAt is timestamp;
+    }
+
+    function canReadJobApplication() {
+      return isAdmin()
+        || (signedIn() && resource.data.applicantId == request.auth.uid)
+        || (signedIn()
+          && ("posterId" in resource.data)
+          && resource.data.posterId == request.auth.uid);
+    }
+
+    function validPosterReviewPair() {
+      return (request.resource.data.status == "shortlisted"
+          && request.resource.data.reviewStatus == "poster_shortlisted")
+        || (request.resource.data.status == "accepted"
+          && request.resource.data.reviewStatus == "poster_accepted")
+        || (request.resource.data.status == "rejected"
+          && request.resource.data.reviewStatus == "poster_rejected");
+    }
+
+    function validPosterApplicationUpdate() {
+      return signedIn()
+        && ("posterId" in resource.data)
+        && resource.data.posterId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status",
+          "reviewStatus",
+          "updatedAt",
+          "reviewedAt",
+          "reviewedBy"
+        ])
+        && validPosterReviewPair()
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.reviewedAt is timestamp;
+    }
+
+    function protectedUserFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        "balance",
+        "role",
+        "emailVerified",
+        "phoneVerified",
+        "verificationStatus",
+        "payoutMethod",
+        "bankDetails",
+        "referredBy",
+        "referralCode"
+      ]);
+    }
+
+    // Starter production rules.
+    // Do not deploy these blindly yet.
+    // Current reward, referral, and payout flows still do some client-side writes
+    // that must move behind trusted server routes first.
+
+    match /users/{userId} {
+      allow read: if isSelf(userId) || isAdmin();
+      allow create: if isSelf(userId)
+        && request.resource.data.uid == userId
+        && !("role" in request.resource.data)
+        && !("balance" in request.resource.data);
+      allow update: if (isSelf(userId) && !protectedUserFieldsChanged()) || isAdmin();
+      allow delete: if false;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending";
+      allow update, delete: if isAdmin();
+    }
+
+    match /jobs/{jobId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.posterId == request.auth.uid
+        && request.resource.data.status == "review";
+      allow update, delete: if isAdmin();
+    }
+
+    match /jobApplications/{applicationId} {
+      allow read: if canReadJobApplication();
+      allow create: if signedIn() && validJobApplicationCreate();
+      allow update: if isAdmin() || validPosterApplicationUpdate();
+      allow delete: if isAdmin();
+    }
+
+    match /messageThreads/{threadId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

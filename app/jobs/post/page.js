@@ -2,164 +2,250 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Send, Tag, DollarSign, FileText, MapPin, List, Briefcase } from "lucide-react"; 
 import { useRouter } from "next/navigation";
-import { saveJob } from "@/lib/jobs";
+import {
+  ArrowLeft,
+  Briefcase,
+  CheckCircle,
+  DollarSign,
+  FileText,
+  List,
+  Loader2,
+  MapPin,
+  Send,
+  ShieldCheck,
+  Tag,
+} from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { saveJob } from "@/lib/jobs";
+
+const initialForm = {
+  title: "",
+  budget: "",
+  description: "",
+  locationType: "Remote",
+  category: "General",
+  requirements: "",
+  client: "",
+};
 
 export default function PostJobPage() {
   const router = useRouter();
-  
-  // 1. ADVANCED STATE VARIABLES
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
-  const [description, setDescription] = useState("");
-  const [locationType, setLocationType] = useState("Remote"); 
-  const [category, setCategory] = useState("General");
-  const [reqText, setReqText] = useState(""); 
+  const [form, setForm] = useState(initialForm);
   const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  // Inside handleSubmit...
-const handleSubmit = async (e) => { // <--- Make function async
-    e.preventDefault();
+  const updateField = (field, value) => {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setIsLoading(true);
+    setMessage("");
 
-    // ... create newJob object ...
+    try {
+      const authUser = await getCurrentUser();
 
-    await saveJob(newJob); // <--- Add await
+      if (!authUser) {
+        setMessage("Please log in before submitting a beta job for admin review.");
+        return;
+      }
 
-    router.push("/jobs");
-    setIsLoading(false);
-};
+      if (!authUser.emailVerified) {
+        router.replace("/verify-email?next=/jobs/post");
+        return;
+      }
+
+      const result = await saveJob({
+        title: form.title,
+        budget: Number(form.budget),
+        description: form.description,
+        locationType: form.locationType,
+        category: form.category,
+        requirements: form.requirements,
+        client: form.client || authUser.displayName || "Beta client",
+        posterId: authUser.uid,
+        posterEmail: authUser.email || null,
+      });
+
+      if (!result.success) {
+        setMessage(result.error || "Could not submit this job right now.");
+        return;
+      }
+
+      router.push(`/jobs/${result.id}`);
+    } catch (error) {
+      console.error("Error submitting job:", error);
+      setMessage("Could not submit this job. Please check your login and Firebase setup.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-kasi-gray pb-24 relative">
-      
-      {/* HEADER */}
-      <div className="bg-white pt-12 pb-6 px-6 border-b border-gray-100 sticky top-0 z-10">
-        <Link href="/jobs" className="text-kasi-dark mb-4 inline-block">
-          <ArrowLeft size={24} />
-        </Link>
-        <h1 className="text-2xl font-black text-kasi-dark">Post a New Job</h1>
-        <p className="text-sm text-gray-500">Fill in the complete details below.</p>
-      </div>
-
-      {/* FORM SECTION */}
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-
-        {/* Job Title */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-kasi-dark flex items-center gap-2">
-            <Tag size={16} /> Job Title
-          </label>
-          <input
-            type="text"
-            placeholder="e.g., Design a simple landing page"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            className="w-full bg-white border border-gray-200 p-3 rounded-lg focus:ring-kasi-gold focus:border-kasi-gold focus:ring-1"
-          />
-        </div>
-
-        {/* Category & Location Row */}
-        <div className="grid grid-cols-2 gap-4">
-          
-          {/* Category Select */}
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-kasi-dark flex items-center gap-2">
-              <Briefcase size={16} /> Category
-            </label>
-            <select 
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-white border border-gray-200 p-3 rounded-lg focus:ring-kasi-gold focus:border-kasi-gold focus:ring-1"
-            >
-              <option value="General">General</option>
-              <option value="Design">Design</option>
-              <option value="Labor">Labor (Tenaga)</option>
-              <option value="Writing">Writing</option>
-              <option value="Tech">Tech/Web</option>
-              <option value="Driver">Driver</option>
-            </select>
+    <div className="min-h-screen bg-kasi-gray pb-24 font-sans">
+      <header className="sticky top-0 z-10 border-b border-gray-100 bg-white px-6 pb-5 pt-10">
+        <div className="mx-auto max-w-2xl">
+          <Link href="/jobs" className="mb-4 inline-flex text-kasi-dark">
+            <ArrowLeft size={24} />
+          </Link>
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-kasi-dark text-kasi-gold">
+              <Briefcase size={22} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-kasi-dark">Post a Job for Review</h1>
+              <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                Share the scope, budget, and worker requirements for the KasiJobs marketplace beta.
+              </p>
+            </div>
           </div>
+        </div>
+      </header>
 
-          {/* Location Select */}
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-kasi-dark flex items-center gap-2">
-              <MapPin size={16} /> Location
-            </label>
-            <select 
-              value={locationType}
-              onChange={(e) => setLocationType(e.target.value)}
-              className="w-full bg-white border border-gray-200 p-3 rounded-lg focus:ring-kasi-gold focus:border-kasi-gold focus:ring-1"
-            >
-              <option value="Remote">Remote</option>
-              <option value="On-Site">On-Site (KL)</option>
-              <option value="On-Site">On-Site (Selangor)</option>
-              <option value="Hybrid">Hybrid</option>
-            </select>
+      <main className="mx-auto max-w-2xl px-5 py-6">
+        <div className="mb-5 rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+          <div className="flex gap-3">
+            <ShieldCheck className="mt-0.5 shrink-0 text-yellow-700" size={20} />
+            <p className="text-xs leading-relaxed text-yellow-900">
+              This form creates a posted-for-review job record. It does not collect payment, create escrow, use Stripe, or start a worker contract.
+            </p>
           </div>
         </div>
 
-        {/* Budget */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-kasi-dark flex items-center gap-2">
-            <DollarSign size={16} /> Budget (RM)
-          </label>
-          <input
-            type="number"
-            placeholder="e.g., 100"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            required
-            min="10"
-            className="w-full bg-white border border-gray-200 p-3 rounded-lg focus:ring-kasi-gold focus:border-kasi-gold focus:ring-1"
-          />
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          {["Posted for review", "Admin-reviewed beta", "Open for interest"].map((step) => (
+            <div key={step} className="rounded-xl border border-gray-100 bg-white p-3 text-xs font-black text-kasi-dark shadow-sm">
+              {step}
+            </div>
+          ))}
         </div>
 
-        {/* Requirements (List) */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-kasi-dark flex items-center gap-2">
-            <List size={16} /> Requirements
-          </label>
-          <textarea
-            rows="3"
-            // FIXED PLACEHOLDER FOR HYDRATION ERROR
-            placeholder={"List requirements here (Press Enter for new line)...\n- Must have experience\n- Can start tomorrow"}
-            value={reqText}
-            onChange={(e) => setReqText(e.target.value)}
-            className="w-full bg-white border border-gray-200 p-3 rounded-lg focus:ring-kasi-gold focus:border-kasi-gold focus:ring-1 resize-none"
-          />
-          <p className="text-[10px] text-gray-400">Tip: Put each requirement on a new line.</p>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-kasi-dark">
+              <Tag size={16} /> Job Title
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Design a simple landing page"
+              value={form.title}
+              onChange={(event) => updateField("title", event.target.value)}
+              required
+              className="w-full rounded-xl border border-gray-200 bg-white p-3 text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
+            />
+          </div>
 
-        {/* Description */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-kasi-dark flex items-center gap-2">
-            <FileText size={16} /> Full Description
-          </label>
-          <textarea
-            rows="5"
-            placeholder="Describe the scope of work..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            required
-            className="w-full bg-white border border-gray-200 p-3 rounded-lg focus:ring-kasi-gold focus:border-kasi-gold focus:ring-1 resize-none"
-          />
-        </div>
-        
-        {/* Post Button */}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full bg-kasi-gold text-kasi-dark font-black py-4 rounded-xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 mt-8"
-        >
-          <Send size={20} />
-          {isLoading ? "Posting..." : "Post Job Now"}
-        </button>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-kasi-dark">
+                <Briefcase size={16} /> Category
+              </label>
+              <select
+                value={form.category}
+                onChange={(event) => updateField("category", event.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white p-3 text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
+              >
+                <option value="General">General</option>
+                <option value="Design">Design</option>
+                <option value="Writing">Writing</option>
+                <option value="Tech">Tech/Web</option>
+                <option value="Event">Event Help</option>
+                <option value="Delivery">Delivery</option>
+              </select>
+            </div>
 
-      </form>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-kasi-dark">
+                <MapPin size={16} /> Location
+              </label>
+              <select
+                value={form.locationType}
+                onChange={(event) => updateField("locationType", event.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white p-3 text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
+              >
+                <option value="Remote">Remote</option>
+                <option value="On-Site (KL)">On-Site (KL)</option>
+                <option value="On-Site (Selangor)">On-Site (Selangor)</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-kasi-dark">
+                <DollarSign size={16} /> Listed Budget (RM)
+              </label>
+              <input
+                type="number"
+                placeholder="100"
+                value={form.budget}
+                onChange={(event) => updateField("budget", event.target.value)}
+                required
+                min="10"
+                className="w-full rounded-xl border border-gray-200 bg-white p-3 text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-kasi-dark">
+                <CheckCircle size={16} /> Client / Company Label
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. KasiJobs Beta"
+                value={form.client}
+                onChange={(event) => updateField("client", event.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white p-3 text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-kasi-dark">
+              <List size={16} /> Requirements
+            </label>
+            <textarea
+              rows="4"
+              placeholder={"Put each requirement on a new line\nCan start this week\nShare previous work sample"}
+              value={form.requirements}
+              onChange={(event) => updateField("requirements", event.target.value)}
+              className="w-full resize-none rounded-xl border border-gray-200 bg-white p-3 text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-kasi-dark">
+              <FileText size={16} /> Full Description
+            </label>
+            <textarea
+              rows="6"
+              placeholder="Describe the scope, expected output, timeline, and any admin review notes."
+              value={form.description}
+              onChange={(event) => updateField("description", event.target.value)}
+              required
+              className="w-full resize-none rounded-xl border border-gray-200 bg-white p-3 text-gray-900 outline-none transition focus:border-kasi-gold focus:ring-1 focus:ring-kasi-gold"
+            />
+          </div>
+
+          {message ? (
+            <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold text-red-600">
+              {message}
+            </div>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-kasi-gold py-4 font-black text-kasi-dark shadow-lg transition hover:scale-[1.01] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+            {isLoading ? "Submitting..." : "Submit as Posted for Review"}
+          </button>
+        </form>
+      </main>
     </div>
   );
 }

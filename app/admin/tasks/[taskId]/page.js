@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation"; 
 import { db } from "@/lib/firebase"; 
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, Timestamp } from "firebase/firestore"; // Added updateDoc, Timestamp
-import { reviewSubmission } from "@/lib/tasks"; 
+import { reviewSubmission, updateTaskAction } from "@/lib/client/admin";
+import { authFetch } from "@/lib/client/auth";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { 
   ArrowLeft, Users, CheckCircle, XCircle, ExternalLink, Eye, X, Loader2, 
   Save, Edit2, Clock, Globe, FileText, List, Trash2,
@@ -104,9 +105,6 @@ export default function TaskDetailsPage() {
       if(!confirm("Save changes to this task?")) return;
       setIsSaving(true);
       try {
-          const taskRef = doc(db, "tasks", taskId);
-          
-          // Prepare Data
           const updates = {
               title: editForm.title,
               description: editForm.description,
@@ -116,11 +114,10 @@ export default function TaskDetailsPage() {
               link: editForm.link,
               type: editForm.type,
               platform: editForm.platform,
-              // Convert Date String back to Timestamp
-              expiryDate: editForm.expiryDate ? Timestamp.fromDate(new Date(editForm.expiryDate)) : null
+              expiryDate: editForm.expiryDate || null
           };
 
-          await updateDoc(taskRef, updates);
+          await updateTaskAction(taskId, updates);
           
           setTask({ ...task, ...updates }); // Update UI
           setIsEditing(false);
@@ -139,7 +136,7 @@ export default function TaskDetailsPage() {
         return alert("Text Proof:\n\n" + (proofString || "No proof provided"));
     }
     try {
-      const res = await fetch(`/api/r2?key=${proofString}`);
+      const res = await authFetch(`/api/r2?key=${proofString}`);
       const data = await res.json();
       if (data.viewUrl) setViewProof(data.viewUrl);
       else alert("Error loading image.");

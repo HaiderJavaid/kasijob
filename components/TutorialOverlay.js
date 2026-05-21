@@ -16,14 +16,14 @@ export default function TutorialOverlay({ user, forceShow, onClose, currentRoute
     // Check if seen normally
     const hasSeen = localStorage.getItem(`kasi_tutorial_seen_${user?.uid}`);
 
-    if (forceShow || (user && !hasSeen) || isContinuing) {
-      setIsVisible(true);
-      // If on profile page and continuing, start at specific step
-      if (currentRoute === "/profile" && isContinuing) {
-          setStep(3); // Start at Profile Step
-      } else {
-          setStep(0);
-      }
+    const shouldShow = forceShow || (user && !hasSeen) || isContinuing;
+    const nextStep = currentRoute === "/profile" && isContinuing ? 3 : 0;
+
+    if (shouldShow) {
+      setTimeout(() => {
+        setIsVisible(true);
+        setStep(nextStep);
+      }, 0);
     }
   }, [user, forceShow, searchParams, currentRoute]);
 
@@ -65,7 +65,7 @@ export default function TutorialOverlay({ user, forceShow, onClose, currentRoute
             <button onClick={handleFinish} className="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><X size={20} /></button>
             <div className="w-20 h-20 bg-kasi-gold rounded-full flex items-center justify-center mx-auto text-4xl shadow-lg shadow-yellow-200 mb-6 animate-bounce">👋</div>
             <h2 className="text-2xl font-black text-kasi-dark mb-2">Welcome to KasiJobs!</h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">Let's verify your account and show you how to earn your first <b>RM 5.00</b>.</p>
+            <p className="text-gray-500 text-sm leading-relaxed mb-6">Let&apos;s verify your account and show you how to earn your first <b>RM 5.00</b>.</p>
             <button onClick={handleNext} className="w-full bg-kasi-dark text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition shadow-lg">Start Tutorial <ArrowRight size={18}/></button>
           </div>
         )}

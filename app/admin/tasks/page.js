@@ -3,15 +3,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation"; // <--- Import Router
 import { db } from "../../../lib/firebase";
-import { collection, getDocs, query, orderBy, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { deleteTaskAction } from "../../../lib/client/admin";
 import { Plus, Trash2, Eye, Users } from "lucide-react"; // <--- Added Users icon
 
 export default function AdminTaskList() {
   const router = useRouter(); // <--- Init Router
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => { loadTasks(); }, []);
 
   const loadTasks = async () => {
     const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
@@ -20,11 +19,25 @@ export default function AdminTaskList() {
     setLoading(false);
   };
 
+  useEffect(() => {
+    const initTasks = async () => {
+      const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    };
+    initTasks();
+  }, []);
+
   const handleDelete = async (id, e) => {
     e.stopPropagation(); // Prevent clicking the row when deleting
     if(!confirm("Delete this task? This will also hide it from users.")) return;
-    await deleteDoc(doc(db, "tasks", id));
-    loadTasks();
+    try {
+      await deleteTaskAction(id);
+      loadTasks();
+    } catch (error) {
+      alert("Error: " + error.message);
+    }
   };
 
   return (

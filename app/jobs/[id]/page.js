@@ -1,153 +1,308 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, DollarSign, CheckCircle, Shield } from "lucide-react";
 import { useParams } from "next/navigation";
-import { getAllJobs } from "@/lib/jobs";
+import {
+  ArrowLeft,
+  Briefcase,
+  CheckCircle,
+  Clock,
+  FileText,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  ShieldCheck,
+  UserCheck,
+} from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
+import {
+  applicationStatuses,
+  getJobApplicationStatus,
+  getJobById,
+  submitJobApplication,
+} from "@/lib/jobs";
 
-// MOCK DATABASE (Same as the list, but with descriptions)
-const JOBS_DB = [
-  {
-    id: 1,
-    title: "Design Logo for Cafe",
-    price: 50,
-    location: "Remote",
-    client: "Kopi Satu",
-    desc: "We need a modern, hipster logo for our new cafe in Bangsar. Must include a coffee bean icon. Black and Gold theme preferred.",
-    tags: ["Design", "Urgent"],
-    requirements: ["Must use Illustrator", "2 Revisions included", "Deliver in PNG/SVG"]
-  },
-  {
-    id: 2,
-    title: "Help Move Furniture",
-    price: 120,
-    location: "Subang Jaya",
-    client: "Mrs. Chong",
-    desc: "Need 2 strong guys to help move a sofa and fridge to the 2nd floor. No lift, stairs only. Lunch provided.",
-    tags: ["Labor", "Physical"],
-    requirements: ["Strong", "Available Saturday morning"]
-  },
-  {
-    id: 3,
-    title: "Translate Malay to English",
-    price: 30,
-    location: "Remote",
-    client: "Student Ali",
-    desc: "I have a 5-page assignment needed to be translated. Academic language required.",
-    tags: ["Writing", "Easy"],
-    requirements: ["Good English", "Fast typer"]
-  },
-  // If ID doesn't match, we show a default
-];
+const formatBudget = (budget) => {
+  const amount = Number(budget || 0);
+  return `RM ${amount.toLocaleString("en-MY", { maximumFractionDigits: 0 })}`;
+};
+
+const formatDate = (createdAt) => {
+  if (!createdAt) return "Beta listing";
+
+  try {
+    return new Intl.DateTimeFormat("en-MY", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(createdAt));
+  } catch {
+    return "Beta listing";
+  }
+};
 
 export default function JobDetailsPage() {
   const params = useParams();
   const [job, setJob] = useState(null);
-  const [isApplied, setIsApplied] = useState(false); 
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [applicationStatus, setApplicationStatus] = useState({ applied: false });
+  const [applyLoading, setApplyLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const discussionHref =
+    job?.id === "sample-event-helper"
+      ? "/messages/sample-event-helper-thread"
+      : job?.id === "sample-logo-cafe"
+        ? "/messages/sample-logo-cafe-thread"
+        : "/messages";
+  const appliedStatus =
+    applicationStatuses[applicationStatus.status] || applicationStatuses.interested;
 
   useEffect(() => {
-    // 1. Get ALL jobs (User posted + Mock)
-    const allJobs = getAllJobs(JOBS_DB); 
-    
-    // 2. Find the match
-    const foundJob = allJobs.find(j => j.id == params.id);
-    
-    if (foundJob) {
-      setJob(foundJob);
-    } else {
-      setJob(JOBS_DB[0]); // Fallback
+    let isMounted = true;
+
+    async function loadJob() {
+      const [selectedJob, authUser] = await Promise.all([getJobById(params.id), getCurrentUser()]);
+      const selectedApplicationStatus =
+        selectedJob && authUser
+          ? await getJobApplicationStatus(selectedJob.id, authUser)
+          : { applied: false };
+
+      if (isMounted) {
+        setJob(selectedJob);
+        setCurrentUser(authUser);
+        setApplicationStatus(selectedApplicationStatus);
+        setLoading(false);
+      }
     }
+
+    loadJob();
+
+    return () => {
+      isMounted = false;
+    };
   }, [params.id]);
 
-  if (!job) return <div>Loading...</div>;
+  const handleApply = async () => {
+    setApplyLoading(true);
+    setMessage("");
+
+    try {
+      const authUser = currentUser || (await getCurrentUser());
+
+      if (!authUser) {
+        setMessage("Log in to register interest for this job.");
+        return;
+      }
+
+      const result = await submitJobApplication(job, authUser);
+
+      if (!result.success) {
+        setMessage(result.error || "Could not register interest right now.");
+        return;
+      }
+
+      setCurrentUser(authUser);
+      setApplicationStatus({
+        applied: true,
+        applicationId: result.applicationId,
+        source: result.source,
+        status: result.status || "interested",
+      });
+      setMessage(
+        result.duplicate
+          ? "You already registered interest for this job."
+          : "Interest registered. KasiJobs can review this beta application next."
+      );
+    } catch (error) {
+      console.error("Error registering interest:", error);
+      setMessage("Could not register interest right now.");
+    } finally {
+      setApplyLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-kasi-gray font-sans">
+        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+          <Loader2 className="mx-auto animate-spin text-kasi-dark" size={28} />
+          <p className="mt-3 text-sm font-bold text-gray-500">Loading job...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="min-h-screen bg-kasi-gray px-6 py-10 font-sans">
+        <Link href="/jobs" className="mb-8 inline-flex items-center gap-2 text-sm font-black text-kasi-dark">
+          <ArrowLeft size={18} />
+          Back to jobs
+        </Link>
+        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+          <Briefcase className="mx-auto text-gray-300" size={40} />
+          <h1 className="mt-4 text-xl font-black text-kasi-dark">Job not found</h1>
+          <p className="mt-2 text-sm text-gray-500">This beta listing may have been removed or is not available.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white pb-32 relative">
-      
-      {/* 1. HEADER IMAGE AREA */}
-      <div className="bg-kasi-dark h-48 relative rounded-b-[2rem] mb-6">
-        <Link href="/jobs" className="absolute top-12 left-6 bg-white/20 p-2 rounded-full text-white backdrop-blur-md">
-          <ArrowLeft size={20} />
-        </Link>
-        <div className="absolute -bottom-6 left-6 w-16 h-16 bg-kasi-gold rounded-2xl flex items-center justify-center text-2xl shadow-float border-4 border-white">
-          💼
-        </div>
-      </div>
+    <div className="min-h-screen bg-white pb-32 font-sans">
+      <section className="relative rounded-b-[2rem] bg-kasi-dark px-6 pb-10 pt-10 text-white">
+        <div className="mx-auto max-w-3xl">
+          <Link
+            href="/jobs"
+            className="mb-8 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition active:scale-95"
+          >
+            <ArrowLeft size={20} />
+          </Link>
 
-      {/* 2. TITLE & PRICE */}
-      <div className="px-6 mt-8">
-        <div className="flex justify-between items-start">
-          <h1 className="text-2xl font-black text-kasi-dark w-2/3 leading-tight">
-            {job.title}
-          </h1>
-          <div className="text-right">
-            <span className="block text-2xl font-black text-kasi-gold">RM {job.price}</span>
-            <span className="text-xs text-gray-400">Fixed Price</span>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-kasi-gold">
+            <ShieldCheck size={14} />
+            {job.status === "review" ? "Posted for review" : "Open marketplace beta"}
+          </div>
+
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-kasi-subtle">{job.category}</p>
+              <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">{job.title}</h1>
+              <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold text-gray-300">
+                <span className="inline-flex items-center gap-1">
+                  <MapPin size={15} />
+                  {job.locationType}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Clock size={15} />
+                  {formatDate(job.createdAt)}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-4 text-kasi-dark shadow-lg sm:text-right">
+              <p className="text-xs font-black uppercase tracking-wide text-gray-400">Listed budget</p>
+              <p className="mt-1 text-2xl font-black">{formatBudget(job.budget)}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-3xl px-5 py-6">
+        <div className="mb-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+          <div className="flex gap-3">
+            <ShieldCheck className="mt-0.5 shrink-0 text-yellow-700" size={20} />
+            <div>
+              <h2 className="text-sm font-black text-yellow-950">Review before real matching</h2>
+              <p className="mt-1 text-xs leading-relaxed text-yellow-900">
+                This listing can collect worker interest for admin review. The discussion link is only a demo hook and does not start payment, escrow, Stripe, or a contract.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Client Info */}
-        <div className="flex items-center gap-2 mt-4 text-sm text-gray-500">
-          <span className="font-bold text-kasi-dark">{job.client}</span>
-          <span>•</span>
-          <span className="flex items-center gap-1"><MapPin size={14} /> {job.location}</span>
-          <span>•</span>
-          <span className="flex items-center gap-1"><Clock size={14} /> posted today</span>
+        <div className="space-y-8">
+          <section>
+            <h2 className="text-lg font-black text-kasi-dark">Job Description</h2>
+            <p className="mt-3 text-sm leading-relaxed text-gray-600">{job.description}</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-black text-kasi-dark">Requirements</h2>
+            {job.requirements.length > 0 ? (
+              <ul className="mt-3 space-y-3">
+                {job.requirements.map((requirement) => (
+                  <li key={requirement} className="flex items-start gap-3 text-sm leading-relaxed text-gray-600">
+                    <CheckCircle className="mt-0.5 shrink-0 text-kasi-gold" size={16} />
+                    {requirement}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-gray-500">No special requirements were added.</p>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+            <div className="flex gap-3">
+              <UserCheck className="mt-0.5 shrink-0 text-kasi-dark" size={22} />
+              <div>
+                <h2 className="text-sm font-black text-kasi-dark">Client</h2>
+                <p className="mt-1 text-sm text-gray-600">{job.client}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-green-100 bg-green-50 p-4">
+            <div className="flex gap-3">
+              <CheckCircle className="mt-0.5 shrink-0 text-green-700" size={22} />
+              <div>
+                <h2 className="text-sm font-black text-green-950">Application status</h2>
+                <p className="mt-1 text-sm leading-relaxed text-green-800">
+                  {applicationStatus.applied
+                    ? `${appliedStatus.label}. ${appliedStatus.description}`
+                    : "Open for interest. Logged-in users can register without starting a payment or message thread."}
+                </p>
+                {applicationStatus.applicationId ? (
+                  <p className="mt-2 text-xs font-bold text-green-700">
+                    Application ref: {applicationStatus.applicationId}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
+      </main>
 
-      {/* 3. DIVIDER */}
-      <hr className="my-6 border-gray-100" />
+      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white p-5">
+        <div className="mx-auto max-w-3xl">
+          {message ? (
+            <p className="mb-3 rounded-xl bg-gray-100 px-3 py-2 text-center text-xs font-bold text-gray-600">
+              {message}
+            </p>
+          ) : null}
 
-      {/* 4. DESCRIPTION */}
-      <div className="px-6">
-        <h3 className="font-bold text-lg mb-3">Job Description</h3>
-        <p className="text-gray-500 text-sm leading-relaxed mb-6">
-          {job.desc}
-        </p>
-
-        <h3 className="font-bold text-lg mb-3">Requirements</h3>
-        <ul className="space-y-2">
-          {job.requirements.map((req, i) => (
-            <li key={i} className="flex items-center gap-3 text-sm text-gray-600">
-              <CheckCircle size={16} className="text-kasi-gold" />
-              {req}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* 5. TRUST BADGE */}
-      <div className="px-6 mt-8">
-        <div className="bg-gray-50 p-4 rounded-xl flex items-center gap-3 border border-gray-100">
-          <Shield className="text-green-500" size={24} />
-          <div>
-            <p className="text-xs font-bold text-kasi-dark">Payment Verified</p>
-            <p className="text-[10px] text-gray-400">Money is held safely until job is done.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {!applicationStatus.applied ? (
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={applyLoading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-kasi-dark py-4 font-black text-white shadow-lg transition hover:bg-black active:scale-95"
+              >
+                {applyLoading ? <Loader2 size={20} className="animate-spin" /> : <UserCheck size={20} />}
+                {applyLoading ? "Registering..." : "Apply / Register Interest"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-4 font-black text-white"
+              >
+                <CheckCircle size={20} />
+                {appliedStatus.label}
+              </button>
+            )}
+            <Link
+              href={discussionHref}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-4 font-black text-kasi-dark shadow-sm transition active:scale-95"
+            >
+              <MessageCircle size={20} />
+              {discussionHref === "/messages" ? "Open Messages" : "Demo Messages"}
+            </Link>
+            <Link
+              href="/jobs/applications"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-4 font-black text-kasi-dark shadow-sm transition active:scale-95 sm:col-span-2"
+            >
+              <FileText size={20} />
+              My Application Status
+            </Link>
           </div>
         </div>
       </div>
-
-      {/* 6. FIXED BOTTOM BUTTON */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-100 max-w-md mx-auto">
-        {!isApplied ? (
-          <button 
-            onClick={() => setIsApplied(true)}
-            className="w-full bg-kasi-dark text-white font-black py-4 rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            Apply Now
-          </button>
-        ) : (
-          <button 
-            disabled
-            className="w-full bg-green-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2"
-          >
-            <CheckCircle size={20} /> Application Sent!
-          </button>
-        )}
-      </div>
-
     </div>
   );
 }
