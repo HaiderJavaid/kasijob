@@ -36,10 +36,9 @@ export function middleware(request) {
     }
   }
 
-  // If visiting login/register BUT already has token -> Redirect to Profile/Tasks
-  if (isPublicPath && token && path !== '/' && path !== '/verify-email') {
-    return NextResponse.redirect(new URL('/tasks', request.url));
-  }
+  // Do not redirect logged-in users away from login/register here.
+  // Firebase Auth runs client-side, so email verification must be decided by
+  // the client verification gate instead of the soft kasi_auth cookie.
 }
 
 // 5. Matcher Config

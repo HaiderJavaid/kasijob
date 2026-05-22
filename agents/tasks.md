@@ -2,11 +2,15 @@
 
 ## Current Priority
 
-- Validate the jobs-first marketplace loop manually against a real Firebase project.
-- Cover post job, apply, shortlist, accept, reject, complete, messaging, skill progress, leaderboard, and avatar loading.
+- Final manual QA of the jobs-first marketplace loop against the real Firebase project.
+- Cover post job, apply, shortlist, accept, reject, complete, messaging, skill progress, leaderboard, avatar loading, and job deletion.
 
 ## Next
 
+- Fix message bubble alignment in job application threads: the poster's own messages should render as "mine" for the poster, and the worker's own messages should render as "mine" for the worker.
+- Design a global notification/red-dot system for messages, jobs, and tasks. It should surface in bottom navigation and on relevant cards or page sections.
+- Track unread message state per participant, then mark a thread read when the current participant opens it.
+- Add job/application notification state for new applicants, status changes, and newly open conversations. [VERIFY scope]
 - Test email verification with a real Firebase user.
 - Decide who can submit beta jobs. [VERIFY]
 - Validate Firestore rules for `jobs`, `jobApplications`, `messageThreads`, and message subcollections in the emulator.
@@ -49,3 +53,7 @@
 - Marketplace vertical slice updated with server-backed shortlist/accept/reject/complete, participant-based message threads, server-backed message sends, and completed-job skill progression.
 - Participant-only message thread rules added for the Firebase messaging slice.
 - Marketplace cleanup pass removed job sample fallbacks, moved Messages into bottom navigation, restored wallet-first profile layout, and relaxed avatar viewing for public profile images.
+- Manage posted jobs now lists jobs first, expands applicants per job, blocks self-review actions, and supports safe deletion for jobs that are not matched or completed.
+- Firebase Admin local configuration was fixed with explicit project diagnostics and a dev-only auth debug endpoint.
+- Email verification now treats Firebase Auth as the source of truth instead of trusting stale Firestore fields.
+- A branded HTML email verification template was added for a future custom mailer path.

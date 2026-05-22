@@ -5,10 +5,12 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Briefcase,
+  ChevronDown,
   CheckCircle,
   Clock,
   Loader2,
   ShieldCheck,
+  Trash2,
   UserCheck,
   UserMinus,
   Users,
@@ -17,6 +19,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import {
   applicationStatuses,
+  deletePostedJob,
   getPosterJobsWithApplications,
   updateJobApplicationStatus,
 } from "@/lib/jobs";
@@ -54,6 +57,8 @@ export default function ManageJobsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [updatingApplicationId, setUpdatingApplicationId] = useState(null);
+  const [deletingJobId, setDeletingJobId] = useState(null);
+  const [expandedJobId, setExpandedJobId] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -144,6 +149,36 @@ export default function ManageJobsPage() {
     }
   };
 
+  const handleDeleteJob = async (jobId, jobTitle) => {
+    const confirmed = window.confirm(
+      `Delete "${jobTitle}"? This also removes pending applications for this job. Matched or completed jobs cannot be deleted.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingJobId(jobId);
+    setMessage("");
+
+    try {
+      const result = await deletePostedJob(jobId, currentUser);
+
+      if (!result.success) {
+        setMessage(result.error || "Could not delete this job.");
+        return;
+      }
+
+      setPostedJobs((currentJobs) => currentJobs.filter((job) => job.id !== jobId));
+      if (expandedJobId === jobId) {
+        setExpandedJobId(null);
+      }
+    } catch (error) {
+      console.error("Error deleting job:", error);
+      setMessage("Could not delete this job.");
+    } finally {
+      setDeletingJobId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-kasi-gray pb-24 font-sans">
       <header className="sticky top-0 z-10 border-b border-gray-100 bg-white px-6 pb-5 pt-10">
@@ -159,7 +194,7 @@ export default function ManageJobsPage() {
               <div>
                 <h1 className="text-2xl font-black text-kasi-dark">Manage Posted Jobs</h1>
                 <p className="mt-1 text-sm leading-relaxed text-gray-500">
-                  Review applicants and mark a beta status without opening a larger admin panel.
+                  View your posted jobs first, then open a job to review applicants or remove draft listings.
                 </p>
               </div>
             </div>
@@ -204,7 +239,12 @@ export default function ManageJobsPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            {postedJobs.map((job) => (
+            {postedJobs.map((job) => {
+              const isExpanded = expandedJobId === job.id;
+              const canDeleteJob = job.status !== "matched" && job.status !== "completed";
+              const isDeleting = deletingJobId === job.id;
+
+              return (
               <section key={job.id} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -219,8 +259,32 @@ export default function ManageJobsPage() {
                       {formatBudget(job.budget)} / {countApplicants(job.applications)}
                     </p>
                   </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedJobId(isExpanded ? null : job.id)}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-kasi-dark transition active:scale-95"
+                    >
+                      <ChevronDown
+                        size={16}
+                        className={`transition ${isExpanded ? "rotate-180" : ""}`}
+                      />
+                      {isExpanded ? "Hide applicants" : "Review applicants"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteJob(job.id, job.title)}
+                      disabled={!canDeleteJob || isDeleting}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm font-black text-red-700 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                      title={canDeleteJob ? "Delete this job" : "Matched or completed jobs cannot be deleted"}
+                    >
+                      {isDeleting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
+                      Delete
+                    </button>
+                  </div>
                 </div>
 
+                {isExpanded ? (
                 <div className="mt-5 space-y-3">
                   {job.applications.length === 0 ? (
                     <div className="rounded-xl bg-gray-50 p-4 text-sm font-bold text-gray-500">
@@ -306,8 +370,10 @@ export default function ManageJobsPage() {
                     })
                   )}
                 </div>
+                ) : null}
               </section>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

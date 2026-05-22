@@ -32,7 +32,10 @@ npm run lint
 
 ## Tests
 
-Not found yet.
+```bash
+npm test
+```
+
 No Firebase emulator or Firestore rules test command found yet.
 
 ## Notes

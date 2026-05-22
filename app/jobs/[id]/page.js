@@ -214,8 +214,8 @@ export default function JobDetailsPage() {
             <h2 className="text-lg font-black text-kasi-dark">Requirements</h2>
             {job.requirements.length > 0 ? (
               <ul className="mt-3 space-y-3">
-                {job.requirements.map((requirement) => (
-                  <li key={requirement} className="flex items-start gap-3 text-sm leading-relaxed text-gray-600">
+                {job.requirements.map((requirement, index) => (
+                  <li key={`${requirement}-${index}`} className="flex items-start gap-3 text-sm leading-relaxed text-gray-600">
                     <CheckCircle className="mt-0.5 shrink-0 text-kasi-gold" size={16} />
                     {requirement}
                   </li>

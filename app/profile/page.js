@@ -114,7 +114,7 @@ function ProfileContent() {
             ...userData,
             uid: currentUser.uid,
             email: userData.email || currentUser.email,
-            emailVerified: currentUser.emailVerified || Boolean(userData.emailVerified),
+            emailVerified: Boolean(currentUser.emailVerified),
           };
           setUser(profileUser);
           if (userData.bankDetails) setBankDetails(userData.bankDetails);

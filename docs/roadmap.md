@@ -10,6 +10,7 @@
 ## Phase 1: Trust Foundation
 
 - Test email verification with a real Firebase project.
+- Keep Firebase Auth as the source of truth for `emailVerified`; Firestore verification fields are a synced display/cache layer.
 - Move remaining money-affecting writes behind server routes.
 - Validate Firestore rules against real app flows, especially jobs, applications, and message thread reads.
 - Consolidate duplicate upload routes.
@@ -26,6 +27,8 @@
 - Keep direct poster-worker threads tied to shortlisted/accepted applications.
 - Keep message sends server-backed and participant-checked.
 - Add participant-only Firestore read rules and message subcollection rules.
+- Fix per-user chat bubble alignment so each participant sees their own messages on the correct side.
+- Add unread state and red-dot notifications for messages, jobs, and tasks across bottom navigation and page cards.
 - Add moderation visibility for admins.
 
 ## Phase 4: Payments And Payouts
@@ -44,5 +47,5 @@
 
 ## Next Recommended Feature
 
-- Add a manual QA checklist for the jobs marketplace loop.
-- It should cover post job, apply, shortlist, accept, reject, complete, message send, skill progress, and current demo-safe limits.
+- Add global marketplace notifications.
+- Start with unread message dots, then extend the same pattern to new applicants, job status changes, and task alerts.

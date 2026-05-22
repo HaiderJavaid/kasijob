@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -32,6 +32,7 @@ const initialForm = {
 
 export default function PostJobPage() {
   const router = useRouter();
+  const submitLockRef = useRef(false);
   const [form, setForm] = useState(initialForm);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -42,6 +43,12 @@ export default function PostJobPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (submitLockRef.current) {
+      return;
+    }
+
+    submitLockRef.current = true;
     setIsLoading(true);
     setMessage("");
 
@@ -50,6 +57,7 @@ export default function PostJobPage() {
 
       if (!authUser) {
         setMessage("Please log in before submitting a beta job for admin review.");
+        submitLockRef.current = false;
         return;
       }
 
@@ -73,6 +81,7 @@ export default function PostJobPage() {
 
       if (!result.success) {
         setMessage(result.error || "Could not submit this job right now.");
+        submitLockRef.current = false;
         return;
       }
 
@@ -80,6 +89,7 @@ export default function PostJobPage() {
     } catch (error) {
       console.error("Error submitting job:", error);
       setMessage("Could not submit this job. Please check your login and Firebase setup.");
+      submitLockRef.current = false;
     } finally {
       setIsLoading(false);
     }

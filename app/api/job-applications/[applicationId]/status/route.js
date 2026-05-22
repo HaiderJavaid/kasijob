@@ -18,7 +18,7 @@ export async function POST(request, { params }) {
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof RequestAuthError || error instanceof JobApplicationActionError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json({ error: error.message, details: error.details || null }, { status: error.status });
     }
 
     console.error("Job application status route error:", error);

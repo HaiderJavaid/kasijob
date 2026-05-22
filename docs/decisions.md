@@ -24,11 +24,23 @@
 - Why: client cookies and client-side role checks are not enough.
 - Tradeoff: deployment needs Firebase Admin env vars.
 
+## Treat Firebase Auth As Email Verification Source
+
+- What: UI and sync helpers should trust `currentUser.emailVerified` first, then update Firestore display fields from that.
+- Why: Firestore can contain stale verification fields after manual testing or old account state.
+- Tradeoff: users may need to sign out/back in or refresh tokens during QA to see the newest Firebase Auth state.
+
 ## Keep Jobs Admin-Reviewed For Now
 
 - What: new job posts use review/beta language; applications are beta records.
 - Why: marketplace trust, payment responsibility, and abuse handling are not final.
 - Tradeoff: less automation, but safer demo story.
+
+## Delete Posted Jobs Through A Trusted Route
+
+- What: posters can delete their own non-matched, non-completed jobs through a Firebase Admin-backed route.
+- Why: cleanup should remove pending application records and close related threads without trusting client-only writes.
+- Tradeoff: matched/completed jobs need explicit archive/cancel product rules before they can be removed safely.
 
 ## Use Participant-Based Job Messaging
 

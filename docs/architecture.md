@@ -44,7 +44,7 @@
 ## Product Flows
 
 - Tasks: admin creates task, user submits proof, admin reviews, approval credits balance and transaction.
-- Jobs: user submits job for review, jobs list/detail display records and samples, worker applies through `jobApplications`.
+- Jobs: user submits a job for review, jobs list/detail display real Firestore records, worker applies through `jobApplications`, and poster actions move applications through shortlist/accept/reject/complete.
 - Messaging: `/messages` reads participant-only `messageThreads`; replies go through a Firebase Admin-backed API route and nested `messages` subcollections.
 - Verification: unverified users are routed to `/verify-email`; verified status syncs to Firestore user docs.
 
@@ -84,3 +84,5 @@
 - `/api/r2` and `/api/upload` overlap; consolidate later.
 - Money-like updates still happen from more than one path.
 - Messaging is private to participants in the demo slice, but it is not moderated or notification-ready production chat yet.
+- Local server-backed routes need Firebase Admin credentials configured; `FIREBASE_ADMIN_PROJECT_ID` falls back to `NEXT_PUBLIC_FIREBASE_PROJECT_ID`.
+- `/api/auth/debug` is development-only and exists to diagnose local Firebase client/Admin project mismatches.
