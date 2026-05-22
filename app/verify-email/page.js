@@ -4,10 +4,11 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, Loader2, LogOut, MailCheck, RefreshCw, Send } from "lucide-react";
-import { onAuthStateChanged, reload, sendEmailVerification } from "firebase/auth";
+import { onAuthStateChanged, reload } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { logoutUser } from "@/lib/auth";
 import { syncEmailVerification } from "@/lib/verification";
+import { sendCustomVerificationEmail } from "@/lib/client/customVerificationEmail";
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -51,7 +52,13 @@ function VerifyEmailContent() {
     if (!user) return;
     setIsSending(true);
     try {
-      await sendEmailVerification(user);
+      const result = await sendCustomVerificationEmail(nextPath);
+
+      if (!result.success) {
+        setStatus(result.error || "Could not send another verification email right now.");
+        return;
+      }
+
       setStatus("Verification email sent. Check your inbox or spam folder.");
     } catch (error) {
       console.error("Verification resend failed:", error);

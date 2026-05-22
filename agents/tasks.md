@@ -7,11 +7,10 @@
 
 ## Next
 
-- Fix message bubble alignment in job application threads: the poster's own messages should render as "mine" for the poster, and the worker's own messages should render as "mine" for the worker.
-- Design a global notification/red-dot system for messages, jobs, and tasks. It should surface in bottom navigation and on relevant cards or page sections.
-- Track unread message state per participant, then mark a thread read when the current participant opens it.
+- Extend the message-first notification/red-dot pattern to jobs and tasks. It should surface in bottom navigation and on relevant cards or page sections.
 - Add job/application notification state for new applicants, status changes, and newly open conversations. [VERIFY scope]
-- Test email verification with a real Firebase user.
+- Remove or securely store the downloaded Firebase service account JSON after confirming local env setup works.
+- Test the custom Resend verification email loop with a real Firebase user and verified `kasijob.my` sender.
 - Decide who can submit beta jobs. [VERIFY]
 - Validate Firestore rules for `jobs`, `jobApplications`, `messageThreads`, and message subcollections in the emulator.
 - Manually test poster application status updates and message sends against a real Firebase project.
@@ -56,4 +55,5 @@
 - Manage posted jobs now lists jobs first, expands applicants per job, blocks self-review actions, and supports safe deletion for jobs that are not matched or completed.
 - Firebase Admin local configuration was fixed with explicit project diagnostics and a dev-only auth debug endpoint.
 - Email verification now treats Firebase Auth as the source of truth instead of trusting stale Firestore fields.
-- A branded HTML email verification template was added for a future custom mailer path.
+- A branded HTML email verification template and Resend-backed server send route were added for custom verification emails.
+- Message bubbles now align by signed-in sender, and message threads track per-participant read timestamps for unread dots.

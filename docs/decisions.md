@@ -30,6 +30,12 @@
 - Why: Firestore can contain stale verification fields after manual testing or old account state.
 - Tradeoff: users may need to sign out/back in or refresh tokens during QA to see the newest Firebase Auth state.
 
+## Send Branded Verification Emails Through Resend
+
+- What: the app generates Firebase email verification action links on the server and sends the branded HTML template through Resend.
+- Why: Firebase client verification emails cannot use the app's full custom HTML design.
+- Tradeoff: delivery now depends on `RESEND_API_KEY`, `EMAIL_FROM`, `NEXT_PUBLIC_APP_URL`, and verified DNS for the sender domain.
+
 ## Keep Jobs Admin-Reviewed For Now
 
 - What: new job posts use review/beta language; applications are beta records.
@@ -53,6 +59,12 @@
 - What: participants send messages through a protected server route that verifies Firebase ID tokens and thread membership.
 - Why: direct client writes are risky for private conversations and future moderation.
 - Tradeoff: client-side realtime writes stay limited; Firestore rules still need participant-only read coverage.
+
+## Track Message Reads On Threads
+
+- What: message threads store `lastReadAtByUser.{uid}` and a protected server route marks the signed-in participant read.
+- Why: unread dots need participant-specific state without introducing a broad notifications collection yet.
+- Tradeoff: this covers message unread state first; jobs and tasks still need their own notification cursors.
 
 ## Use Completed Jobs For Skill Progress
 

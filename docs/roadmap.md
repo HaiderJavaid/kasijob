@@ -9,7 +9,7 @@
 
 ## Phase 1: Trust Foundation
 
-- Test email verification with a real Firebase project.
+- Test the custom Resend verification email loop with a real Firebase project and verified sender domain.
 - Keep Firebase Auth as the source of truth for `emailVerified`; Firestore verification fields are a synced display/cache layer.
 - Move remaining money-affecting writes behind server routes.
 - Validate Firestore rules against real app flows, especially jobs, applications, and message thread reads.
@@ -27,8 +27,8 @@
 - Keep direct poster-worker threads tied to shortlisted/accepted applications.
 - Keep message sends server-backed and participant-checked.
 - Add participant-only Firestore read rules and message subcollection rules.
-- Fix per-user chat bubble alignment so each participant sees their own messages on the correct side.
-- Add unread state and red-dot notifications for messages, jobs, and tasks across bottom navigation and page cards.
+- Keep per-user chat bubble alignment based on the signed-in message author.
+- Extend message unread dots into job and task notifications across bottom navigation and page cards.
 - Add moderation visibility for admins.
 
 ## Phase 4: Payments And Payouts

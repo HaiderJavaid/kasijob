@@ -45,8 +45,8 @@
 
 - Tasks: admin creates task, user submits proof, admin reviews, approval credits balance and transaction.
 - Jobs: user submits a job for review, jobs list/detail display real Firestore records, worker applies through `jobApplications`, and poster actions move applications through shortlist/accept/reject/complete.
-- Messaging: `/messages` reads participant-only `messageThreads`; replies go through a Firebase Admin-backed API route and nested `messages` subcollections.
-- Verification: unverified users are routed to `/verify-email`; verified status syncs to Firestore user docs.
+- Messaging: `/messages` reads participant-only `messageThreads`; replies and read markers go through Firebase Admin-backed API routes and nested `messages` subcollections.
+- Verification: unverified users are routed to `/verify-email`; verified status syncs to Firestore user docs; custom verification emails use a Firebase Admin action link plus Resend.
 
 ## Collections Seen In Code
 
@@ -70,6 +70,7 @@
 ## External Services
 
 - Firebase Auth — login, register, email verification.
+- Resend — custom HTML verification email delivery when configured.
 - Firestore — app data and money-like records.
 - Firebase Admin SDK — trusted server route checks and mutations.
 - Cloudflare R2 — image storage.
@@ -86,3 +87,4 @@
 - Messaging is private to participants in the demo slice, but it is not moderated or notification-ready production chat yet.
 - Local server-backed routes need Firebase Admin credentials configured; `FIREBASE_ADMIN_PROJECT_ID` falls back to `NEXT_PUBLIC_FIREBASE_PROJECT_ID`.
 - `/api/auth/debug` is development-only and exists to diagnose local Firebase client/Admin project mismatches.
+- `/api/auth/send-verification-email` needs `RESEND_API_KEY`, `EMAIL_FROM`, and `NEXT_PUBLIC_APP_URL` for the custom email loop.

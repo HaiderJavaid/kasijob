@@ -9,11 +9,11 @@
 - `jobApplications` has applicant/poster/admin rules, but still needs emulator validation for the full lifecycle.
 - `messageThreads` now stores participant IDs with participant-only read rules and server-backed sends, but still needs emulator validation.
 - Messaging is closer to marketplace chat, but still needs moderation, abuse handling, and notification decisions.
-- Message bubble alignment still needs a UI fix so each signed-in participant sees their own messages consistently.
-- Global red-dot notification state does not exist yet for messages, jobs, or tasks.
+- Message unread dots now exist, but jobs and tasks still need a shared notification pattern.
 
 ## Security Debt
 
+- Remove or securely archive any downloaded Firebase service account JSON after copying needed values into local environment variables; never commit service account files.
 - Add server-side checks for all money-affecting writes.
 - Restrict verification, risk, balance, transaction, payout, and role fields.
 - Validate participant-only read rules for `messageThreads` and message subcollections in the emulator.
@@ -35,9 +35,9 @@
 
 - Jobs now have a poster review/status workflow through completion, but not a production match/contract/payment workflow.
 - Job applications do not have an external CMS/admin operations workflow yet.
-- Messaging is connected to shortlisted/accepted applications, but not yet moderated or notification-ready.
+- Messaging is connected to shortlisted/accepted applications and has basic unread dots, but it is not yet moderated or production chat.
 - Manage posted jobs supports safe draft/open deletion, but matched/completed job deletion and archiving need product rules before production.
-- The branded verification email template exists as HTML, but Firebase client `sendEmailVerification()` still uses Firebase's email system unless a custom mailer is added.
+- Custom verification email delivery now uses a Firebase Admin action link plus Resend, but it still needs real-domain QA and bounce/error handling before production.
 - Skill-tag progression exists for completed jobs; reputation display and anti-gaming rules are still early.
 - Tasks still dominate product identity.
 - Leaderboard currently uses wallet/balance total; confirm whether task rewards and future job earnings should stay combined. [VERIFY]
