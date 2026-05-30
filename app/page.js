@@ -49,7 +49,7 @@ export default function LandingPage() {
           </h1>
           
           <p className="text-gray-400 text-lg md:text-xl mb-8 max-w-lg mx-auto md:mx-0 leading-relaxed">
-            Not just a reward app. A freelance ecosystem. Complete digital tasks, local gigs, or creative work. 
+            A gigs and freelance marketplace for flexible paid work. Take on local jobs, remote projects, or creative client work.
             <br/><span className="text-white font-bold">We clear your balance on the 5th. Guaranteed.</span>
           </p>
 
@@ -190,17 +190,22 @@ export default function LandingPage() {
         </div>
 
         <div className="mx-auto max-w-[26rem] md:hidden">
-          <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#f3f4f6] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
-            <details className="group rounded-[1.5rem] bg-[#111] px-5 py-6 text-white shadow-xl">
+          <div className="relative bg-[#0a0a0a] px-1 pb-20 text-white">
+            <div className="inline-flex w-full items-center gap-3 rounded-xl bg-white/10 px-4 py-4 text-sm font-bold text-gray-300">
+              <Search size={16} />
+              <span className="flex-1">Search gigs</span>
+            </div>
+
+            <details className="group mt-4">
               <summary className="list-none cursor-pointer">
-                <div className="inline-flex w-full items-center gap-3 rounded-xl bg-white/10 px-4 py-4 text-sm font-bold text-gray-300">
-                  <Search size={16} />
-                  <span className="flex-1">Search gigs</span>
+                <div className="inline-flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-bold text-gray-300">
+                  <Briefcase size={16} />
+                  <span className="flex-1">Marketplace stats</span>
                   <ChevronDown size={16} className="transition group-open:rotate-180" />
                 </div>
               </summary>
 
-              <div className="mt-5 grid gap-3">
+              <div className="mt-4 grid gap-3">
                 {previewStats.map((stat) => (
                   <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">{stat.label}</p>
@@ -208,14 +213,15 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
+            </details>
 
-              <div className="mt-4 space-y-4">
-                {previewJobs.map((job) => (
-                  <JobPreviewCard key={job.title} job={job} />
-                ))}
-              </div>
+            <div className="relative mt-4 space-y-4 overflow-hidden pb-40">
+              {previewJobs.slice(0, 3).map((job) => (
+                <JobPreviewCard key={job.title} job={job} />
+              ))}
 
-              <div className="mt-4 rounded-2xl border border-white/20 bg-black/80 p-5 text-center text-white backdrop-blur-md">
+              <div className="pointer-events-none absolute inset-x-0 bottom-24 h-36 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 rounded-2xl border border-white/20 bg-black/80 p-5 text-center text-white backdrop-blur-md">
                 <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFD700] text-black">
                   <ShieldCheck size={18} />
                 </div>
@@ -224,7 +230,7 @@ export default function LandingPage() {
                   Create a free account to open listings, apply, and message posters.
                 </p>
               </div>
-            </details>
+            </div>
           </div>
         </div>
       </section>
@@ -233,31 +239,31 @@ export default function LandingPage() {
       <section className="py-24 px-6 bg-[#0f0f0f] border-t border-white/5">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-6">More Than Just <span className="text-[#FFD700]">Tasks</span></h2>
+            <h2 className="text-3xl md:text-5xl font-black mb-6">Built for <span className="text-[#FFD700]">Freelance Work</span></h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-              We combine the ease of reward apps with the earning potential of freelancing.
+              KasiJobs helps people earn through real gigs, recurring client work, and practical local services.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FeatureCard 
               icon={<Zap size={32} />}
-              title="Micro-Tasks"
-              desc="Quick earnings. Watch ads, install apps, or answer surveys. Perfect for spare time."
+              title="Fast Gigs"
+              desc="Pick up short paid jobs you can finish quickly, from simple admin work to on-demand local help."
               color="text-yellow-400"
               bg="bg-yellow-400/10"
             />
             <FeatureCard 
               icon={<Briefcase size={32} />}
-              title="Freelance Gigs"
-              desc="Real work. Design, writing, or local help. Higher pay for your specialized skills."
+              title="Client Projects"
+              desc="Win design, writing, marketing, and operations work that pays more for proven freelance skills."
               color="text-blue-400"
               bg="bg-blue-400/10"
             />
             <FeatureCard 
               icon={<ShieldCheck size={32} />}
-              title="Guaranteed Pay"
-              desc="No more 'Minimum Withdrawal' scams. We clear everyone's balance on the 5th."
+              title="Clear Payouts"
+              desc="Know when you get paid. KasiJobs clears approved earnings on the 5th with a simple payout cycle."
               color="text-green-400"
               bg="bg-green-400/10"
             />

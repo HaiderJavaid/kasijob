@@ -4,15 +4,14 @@ project:
   github_repo: https://github.com/HaiderJavaid/kasijob.git
 status:
   active_ui: app/page.js
-  positioning: jobs-first marketplace demo with landing-page preview of the logged-in jobs board
+  positioning: jobs-first freelance marketplace demo with landing-page preview of the logged-in jobs board
   current_risks:
     - Homepage preview is visually QA'd via local screenshots, but still needs manual browser QA on a real phone and desktop browser before release.
-    - Messaging-related files are dirty in the worktree and were not modified during the homepage pass.
     - Lint still reports pre-existing warnings outside the homepage change.
 deployment:
   host_target: unknown
   branch: main
-  latest_commit: 1e2e1c8
+  latest_commit: 804f3be
   config_file: null
   pushed: false
   pr_url: null
@@ -23,29 +22,21 @@ verification:
   result: pass-with-existing-warnings
   screenshots:
     - output/playwright/homepage.png
-    - output/playwright/kasijob-preview.png
+    - output/playwright/homepage-preview-desktop-v2.png
+    - output/playwright/homepage-preview-mobile-collapsed-section-v2.png
 dirty_worktree:
   modified:
-    - app/messages/[id]/page.js
-    - app/messages/page.js
     - app/page.js
-    - components/navigation/BottomNav.js
-    - docs/architecture.md
-    - lib/auth.js
-    - lib/messages.js
-    - lib/server/jobApplications.js
   untracked:
-    - app/api/messages/[threadId]/read/
-    - lib/messageNotifications.mjs
-    - lib/messageNotifications.test.mjs
     - output/
 done:
   - Restored the homepage jobs-preview section to the original board-style visual treatment.
   - Kept the "Peek inside the jobs board" panel on desktop only.
-  - Mobile preview now defaults to a collapsed search-only state using a native details/summary toggle.
+  - Mobile preview now shows search and job cards by default, keeps stats collapsed by default, and fades the third visible job into the register CTA.
   - Updated preview stats to open jobs 32, today's payout paid today RM2,652, and total users 157.
   - Kept the bottom register CTA dark to match the approved look.
+  - Rewrote the hero and supporting section copy to position KasiJobs as a gigs and freelance earning app, removing the reward-app angle.
 next:
   - Manually QA homepage preview interactions and spacing on real mobile and desktop browsers.
   - Decide whether the generated preview screenshots in output/playwright should remain tracked artifacts or be cleaned before commit.
-  - Resume the unfinished messaging notification work once homepage QA is accepted.
+  - Continue the messaging notification work after homepage QA is accepted.
