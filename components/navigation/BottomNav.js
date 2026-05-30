@@ -6,10 +6,14 @@ import { Briefcase, MessageCircle, Zap, User, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { collection, query, where, getDocs, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase"; // Adjust path if needed (e.g. @/lib/firebase)
+import { getCurrentUser } from "@/lib/auth";
+import { getAllMessageThreads } from "@/lib/messages";
+import { isThreadUnreadForUser } from "@/lib/messageNotifications.mjs";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const [hasNotification, setHasNotification] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const navRoutes = ["/jobs", "/messages", "/tasks", "/leaderboard", "/profile"];
   const shouldShowNav = navRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
@@ -56,6 +60,15 @@ export default function BottomNav() {
         // Silent fail (don't break navbar if DB issues)
         console.log("Nav check skipped:", error);
       }
+
+      try {
+        const authUser = await getCurrentUser();
+        const threads = await getAllMessageThreads(authUser);
+        setHasUnreadMessages(threads.some((thread) => isThreadUnreadForUser(thread, authUser)));
+      } catch (error) {
+        console.log("Message nav check skipped:", error);
+        setHasUnreadMessages(false);
+      }
     };
 
     // Run on mount
@@ -66,10 +79,12 @@ export default function BottomNav() {
       setHasNotification(localStorage.getItem("kasi_task_alert") === "true");
     };
     window.addEventListener("kasi_notif_update", syncLocal);
+    window.addEventListener("kasi_message_read_update", checkForUpdates);
     window.addEventListener("storage", syncLocal);
 
     return () => {
       window.removeEventListener("kasi_notif_update", syncLocal);
+      window.removeEventListener("kasi_message_read_update", checkForUpdates);
       window.removeEventListener("storage", syncLocal);
     };
   }, [pathname, shouldShowNav]);
@@ -96,6 +111,10 @@ export default function BottomNav() {
 
         {/* MESSAGES TAB */}
         <Link href="/messages" className="flex flex-col items-center gap-1 group relative">
+          {hasUnreadMessages && (
+            <span className="absolute top-0 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-kasi-dark z-50 shadow-lg shadow-red-500/50"></span>
+          )}
+
           <div className={`p-2 rounded-full transition-all duration-300 ${isActive('/messages') ? 'bg-kasi-gold text-kasi-dark' : 'text-gray-400 group-hover:text-white'}`}>
             <MessageCircle size={20} strokeWidth={2.5} />
           </div>

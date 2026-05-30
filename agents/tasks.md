@@ -9,6 +9,7 @@
 
 - Extend the message-first notification/red-dot pattern to jobs and tasks. It should surface in bottom navigation and on relevant cards or page sections.
 - Add job/application notification state for new applicants, status changes, and newly open conversations. [VERIFY scope]
+- Manually QA the homepage jobs-preview section on real mobile and desktop browsers before shipping.
 - Remove or securely store the downloaded Firebase service account JSON after confirming local env setup works.
 - Test the custom Resend verification email loop with a real Firebase user and verified `kasijob.my` sender.
 - Decide who can submit beta jobs. [VERIFY]
@@ -39,6 +40,7 @@
 
 ## Done
 
+- Homepage marketing flow now previews the logged-in jobs board, keeps the desktop intro panel, uses mobile collapsed search-only preview, and includes updated stats/lock CTA styling.
 - AI docs reorganized into `docs/` and `agents/`.
 - Phase 0 stabilization docs captured.
 - Security foundation docs captured.

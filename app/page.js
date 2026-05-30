@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import Mascot from "../components/Mascot"; 
-import { ArrowRight, Briefcase, Zap, Calendar, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, Briefcase, ChevronDown, Clock, MapPin, Search, ShieldCheck, Zap } from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -115,6 +115,120 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* --- JOBS PREVIEW SECTION --- */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#0a0a0a] via-[#111] to-[#f3f4f6] px-4 pb-24 pt-4 sm:px-6">
+        <div className="mx-auto hidden max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#101010] shadow-[0_30px_100px_rgba(0,0,0,0.45)] md:block">
+          <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
+            <div className="border-b border-white/10 p-8 md:p-10 lg:border-b-0 lg:border-r">
+              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFD700] text-black">
+                <Briefcase size={24} strokeWidth={3} />
+              </div>
+              <h2 className="text-3xl font-black leading-tight text-white md:text-5xl">
+                Peek inside the jobs board.
+              </h2>
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-gray-400 md:text-lg">
+                Browse small paid jobs, see budgets, and register interest once you join KasiJobs.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FFD700] px-6 py-4 text-sm font-black text-black transition hover:bg-[#E5C100] active:scale-95"
+                >
+                  Unlock Jobs <ArrowRight size={18} strokeWidth={3} />
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-sm font-bold text-white transition hover:bg-white/10"
+                >
+                  I have an account
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative min-h-[620px] bg-[#f3f4f6] p-4 text-[#111] sm:p-6 md:p-8">
+              <div className="rounded-[1.5rem] bg-[#111] px-5 py-6 text-white shadow-xl">
+                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-[#FFD700]">
+                      KasiJobs Marketplace
+                    </p>
+                    <h3 className="mt-1 text-2xl font-black">Available jobs</h3>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-gray-300">
+                    <Search size={16} />
+                    Search gigs
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {previewStats.map((stat) => (
+                    <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">{stat.label}</p>
+                      <p className="mt-2 text-xl font-black">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {previewJobs.map((job) => (
+                  <JobPreviewCard key={job.title} job={job} />
+                ))}
+              </div>
+
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#f3f4f6] via-[#f3f4f6]/95 to-transparent"></div>
+              <div className="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-xl rounded-2xl border border-white/20 bg-black/80 p-5 text-center text-white shadow-2xl backdrop-blur-md sm:inset-x-8">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFD700] text-black">
+                  <ShieldCheck size={18} />
+                </div>
+                <h3 className="text-xl font-black">Register to see full jobs</h3>
+                <p className="mt-1 text-sm text-gray-300">
+                  Create a free account to open listings, apply, and message posters.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-auto max-w-[26rem] md:hidden">
+          <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#f3f4f6] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
+            <details className="group rounded-[1.5rem] bg-[#111] px-5 py-6 text-white shadow-xl">
+              <summary className="list-none cursor-pointer">
+                <div className="inline-flex w-full items-center gap-3 rounded-xl bg-white/10 px-4 py-4 text-sm font-bold text-gray-300">
+                  <Search size={16} />
+                  <span className="flex-1">Search gigs</span>
+                  <ChevronDown size={16} className="transition group-open:rotate-180" />
+                </div>
+              </summary>
+
+              <div className="mt-5 grid gap-3">
+                {previewStats.map((stat) => (
+                  <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">{stat.label}</p>
+                    <p className="mt-2 text-xl font-black">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 space-y-4">
+                {previewJobs.map((job) => (
+                  <JobPreviewCard key={job.title} job={job} />
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/20 bg-black/80 p-5 text-center text-white backdrop-blur-md">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFD700] text-black">
+                  <ShieldCheck size={18} />
+                </div>
+                <h3 className="text-xl font-black">Register to see full jobs</h3>
+                <p className="mt-1 text-sm text-gray-300">
+                  Create a free account to open listings, apply, and message posters.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
       {/* --- FEATURES SECTION --- */}
       <section className="py-24 px-6 bg-[#0f0f0f] border-t border-white/5">
         <div className="max-w-7xl mx-auto">
@@ -209,6 +323,80 @@ export default function LandingPage() {
   );
 }
 
+const previewJobs = [
+  {
+    category: "Design",
+    title: "Poster for weekend promo",
+    description: "Create a clean social poster and story version for a local food stall campaign.",
+    budget: "RM 80",
+    location: "Remote",
+  },
+  {
+    category: "Local help",
+    title: "Event crew for pop-up booth",
+    description: "Help set up, greet visitors, and pack down a small booth at a community market.",
+    budget: "RM 120",
+    location: "On-site",
+  },
+  {
+    category: "Writing",
+    title: "Product captions in Malay",
+    description: "Write short, friendly captions for ten marketplace products with clear benefits.",
+    budget: "RM 60",
+    location: "Remote",
+  },
+  {
+    category: "Testing",
+    title: "Try a new mobile signup flow",
+    description: "Record notes and screenshots while testing a beta signup flow on your phone.",
+    budget: "RM 35",
+    location: "Remote",
+  },
+];
+
+const previewStats = [
+  { label: "Open jobs", value: "32" },
+  { label: "Today's payout", value: "Paid Today RM2,652" },
+  { label: "Total Users", value: "157" },
+];
+
+function JobPreviewCard({ job }) {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#111] text-[#FFD700]">
+            <Briefcase size={22} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">
+              {job.category}
+            </p>
+            <h3 className="mt-1 text-lg font-black leading-tight text-[#111]">
+              {job.title}
+            </h3>
+          </div>
+        </div>
+        <ArrowRight size={18} className="mt-1 shrink-0 text-gray-300" />
+      </div>
+      <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-gray-500">
+        {job.description}
+      </p>
+      <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-[#111]">{job.budget}</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1">
+          <MapPin size={12} />
+          {job.location}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-yellow-800">
+          <Clock size={12} />
+          Open
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function FeatureCard({ icon, title, desc, color, bg }) {
   return (
     <div className="bg-[#151515] p-8 rounded-3xl border border-white/5 hover:border-[#FFD700]/30 transition-all hover:-translate-y-2 group">
@@ -229,4 +417,3 @@ function FaqItem({ q, a }) {
     </div>
   );
 }
-

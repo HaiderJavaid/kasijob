@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getAllMessageThreads } from "@/lib/messages";
 import { getCurrentUser } from "@/lib/auth";
+import { isThreadUnreadForUser } from "@/lib/messageNotifications.mjs";
 
 const formatBudget = (budget) => {
   const amount = Number(budget || 0);
@@ -38,6 +39,7 @@ const getLastMessage = (thread) => thread.lastMessagePreview || thread.messages[
 
 export default function MessagesPage() {
   const [threads, setThreads] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export default function MessagesPage() {
       const authUser = await getCurrentUser();
       const availableThreads = await getAllMessageThreads(authUser);
       if (isMounted) {
+        setCurrentUser(authUser);
         setThreads(availableThreads);
         setLoading(false);
       }
@@ -124,51 +127,67 @@ export default function MessagesPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {threads.map((thread) => (
-              <Link
-                key={thread.id}
-                href={`/messages/${thread.id}`}
-                className="group block rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-kasi-dark text-kasi-gold">
-                      <MessageCircle size={22} />
+            {threads.map((thread) => {
+              const isUnread = isThreadUnreadForUser(thread, currentUser);
+
+              return (
+                <Link
+                  key={thread.id}
+                  href={`/messages/${thread.id}`}
+                  className={`group block rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${
+                    isUnread ? "border-kasi-gold ring-2 ring-kasi-gold/20" : "border-gray-100"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-kasi-dark text-kasi-gold">
+                        <MessageCircle size={22} />
+                        {isUnread && (
+                          <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-red-500" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">
+                          {formatBudget(thread.jobBudget)} job
+                        </p>
+                        <h2 className="mt-1 text-lg font-black leading-tight text-kasi-dark">
+                          {thread.jobTitle}
+                        </h2>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">
-                        {formatBudget(thread.jobBudget)} job
-                      </p>
-                      <h2 className="mt-1 text-lg font-black leading-tight text-kasi-dark">
-                        {thread.jobTitle}
-                      </h2>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {isUnread && (
+                        <span className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-black text-red-600">
+                          Unread
+                        </span>
+                      )}
+                      <ArrowRight
+                        size={18}
+                        className="mt-1 text-gray-300 transition group-hover:text-kasi-dark"
+                      />
                     </div>
                   </div>
-                  <ArrowRight
-                    size={18}
-                    className="mt-1 shrink-0 text-gray-300 transition group-hover:text-kasi-dark"
-                  />
-                </div>
 
-                <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-gray-500">
-                  {getLastMessage(thread)}
-                </p>
+                  <p className={`mt-4 line-clamp-2 text-sm leading-relaxed ${isUnread ? "font-bold text-kasi-dark" : "text-gray-500"}`}>
+                    {getLastMessage(thread)}
+                  </p>
 
-                <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-kasi-dark">
-                    <UserRound size={12} />
-                    {thread.workerName} and {thread.clientName}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1">
-                    <Clock size={12} />
-                    {formatUpdatedAt(thread.updatedAt)}
-                  </span>
-                  <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-800">
-                    {thread.state === "closed" ? "Closed" : thread.source === "sample" ? "Demo" : "Private"}
-                  </span>
-                </div>
-              </Link>
-            ))}
+                  <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-kasi-dark">
+                      <UserRound size={12} />
+                      {thread.workerName} and {thread.clientName}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1">
+                      <Clock size={12} />
+                      {formatUpdatedAt(thread.updatedAt)}
+                    </span>
+                    <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-800">
+                      {thread.state === "closed" ? "Closed" : thread.source === "sample" ? "Demo" : "Private"}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </main>

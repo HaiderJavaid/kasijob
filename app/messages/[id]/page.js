@@ -13,8 +13,9 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { addMessageToThread, getMessageThreadById } from "@/lib/messages";
+import { addMessageToThread, getMessageThreadById, markMessageThreadRead } from "@/lib/messages";
 import { getCurrentUser } from "@/lib/auth";
+import { getViewerMessageState } from "@/lib/messageNotifications.mjs";
 
 const formatBudget = (budget) => {
   const amount = Number(budget || 0);
@@ -43,6 +44,7 @@ export default function MessageThreadPage() {
   const [reply, setReply] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [notice, setNotice] = useState("");
+  const [viewer, setViewer] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -52,8 +54,28 @@ export default function MessageThreadPage() {
       const selectedThread = await getMessageThreadById(params.id, authUser);
 
       if (isMounted) {
+        setViewer(authUser);
         setThread(selectedThread);
         setLoading(false);
+      }
+
+      if (selectedThread && selectedThread.source !== "sample" && authUser?.uid) {
+        const readResult = await markMessageThreadRead(params.id);
+
+        if (readResult.success && isMounted) {
+          setThread((currentThread) =>
+            currentThread
+              ? {
+                  ...currentThread,
+                  lastReadAtByUser: {
+                    ...currentThread.lastReadAtByUser,
+                    [authUser.uid]: new Date(),
+                  },
+                }
+              : currentThread
+          );
+          window.dispatchEvent(new Event("kasi_message_read_update"));
+        }
       }
     }
 
@@ -209,16 +231,18 @@ export default function MessageThreadPage() {
 
         <section className="space-y-3">
           {sortedMessages.map((message) => {
-            const isWorker = message.authorRole === "worker";
+            const { isMine } = getViewerMessageState(message, viewer, {
+              isSampleThread: thread.source === "sample",
+            });
 
             return (
               <div
                 key={message.id}
-                className={`flex ${isWorker ? "justify-end" : "justify-start"}`}
+                className={`flex ${isMine ? "justify-end" : "justify-start"}`}
               >
                 <article
                   className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
-                    isWorker
+                    isMine
                       ? "bg-kasi-dark text-white"
                       : "border border-gray-100 bg-white text-kasi-dark"
                   }`}

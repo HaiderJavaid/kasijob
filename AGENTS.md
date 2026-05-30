@@ -3,6 +3,7 @@
 ## Start Here
 
 - Read this file first.
+- Read `docs/HANDOFF.yaml` for latest repo state and pending work.
 - Read `agents/workflow.md` before changing code or docs.
 - Read `agents/tasks.md` for current priorities.
 - Read `docs/architecture.md` before touching app, API, auth, storage, admin, jobs, or money-like flows.
@@ -40,6 +41,7 @@
 
 ## Key Docs
 
+- `docs/HANDOFF.yaml` — latest session state, dirty worktree notes, verification, and next steps.
 - `docs/overview.md` — product, users, features, current state.
 - `docs/architecture.md` — stack, folders, data flow, services.
 - `docs/roadmap.md` — phased product plan.

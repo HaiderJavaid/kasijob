@@ -3,6 +3,7 @@
 ## Read Order
 
 - Start with `AGENTS.md`.
+- Read `docs/HANDOFF.yaml` for the current session handoff.
 - Read `agents/tasks.md` for current priorities.
 - Read `docs/architecture.md` before code changes.
 - Read `docs/technical-debt.md` before security, money, upload, auth, or messaging work.

@@ -87,4 +87,4 @@
 - Messaging is private to participants in the demo slice, but it is not moderated or notification-ready production chat yet.
 - Local server-backed routes need Firebase Admin credentials configured; `FIREBASE_ADMIN_PROJECT_ID` falls back to `NEXT_PUBLIC_FIREBASE_PROJECT_ID`.
 - `/api/auth/debug` is development-only and exists to diagnose local Firebase client/Admin project mismatches.
-- `/api/auth/send-verification-email` needs `RESEND_API_KEY`, `EMAIL_FROM`, and `NEXT_PUBLIC_APP_URL` for the custom email loop.
+- `/api/auth/custom-verification-email` needs `RESEND_API_KEY`, `EMAIL_FROM`, and `NEXT_PUBLIC_APP_URL` for the custom email loop.
