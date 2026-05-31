@@ -1,22 +1,24 @@
-date: 2026-05-30
+date: 2026-05-31
 project:
   local_path: /Users/kinghaider/Desktop/Coding/projects/kasi-job
   github_repo: https://github.com/HaiderJavaid/kasijob.git
 status:
-  active_ui: app/page.js
+  active_ui: app/leaderboard/page.js
   positioning: jobs-first freelance marketplace demo with landing-page preview of the logged-in jobs board
   current_risks:
     - Homepage preview is visually QA'd via local screenshots, but still needs manual browser QA on a real phone and desktop browser before release.
-    - Lint still reports pre-existing warnings outside the homepage change.
+    - Lint still reports pre-existing warnings outside the leaderboard fix.
+    - Leaderboard now reads all user docs client-side, which is acceptable for the current small demo but should move server-side or be paginated before production scale.
 deployment:
   host_target: unknown
   branch: main
-  latest_commit: 804f3be
+  latest_commit: 5e727b8
   config_file: null
-  pushed: false
+  pushed: true
   pr_url: null
 verification:
   last_run:
+    - npm test
     - npm run lint
     - npm run build
   result: pass-with-existing-warnings
@@ -25,18 +27,14 @@ verification:
     - output/playwright/homepage-preview-desktop-v2.png
     - output/playwright/homepage-preview-mobile-collapsed-section-v2.png
 dirty_worktree:
-  modified:
-    - app/page.js
   untracked:
-    - output/
+    - output/playwright/homepage-preview-mobile-collapsed-section-v2.png
 done:
-  - Restored the homepage jobs-preview section to the original board-style visual treatment.
-  - Kept the "Peek inside the jobs board" panel on desktop only.
-  - Mobile preview now shows search and job cards by default, keeps stats collapsed by default, and fades the third visible job into the register CTA.
-  - Updated preview stats to open jobs 32, today's payout paid today RM2,652, and total users 157.
-  - Kept the bottom register CTA dark to match the approved look.
-  - Rewrote the hero and supporting section copy to position KasiJobs as a gigs and freelance earning app, removing the reward-app angle.
+  - Fixed leaderboard users disappearing by removing the `emailVerified:false` filter.
+  - Added pure leaderboard sorting/capping logic with tests.
+  - Leaderboard now includes users with missing balances as RM0 and ranks top 10 by wallet balance.
 next:
   - Manually QA homepage preview interactions and spacing on real mobile and desktop browsers.
   - Decide whether the generated preview screenshots in output/playwright should remain tracked artifacts or be cleaned before commit.
+  - Manually QA leaderboard against the real Firebase project.
   - Continue the messaging notification work after homepage QA is accepted.
