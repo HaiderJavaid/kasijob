@@ -48,10 +48,11 @@ export default function LandingPage() {
       </nav>
 
       {/* --- HERO SECTION --- */}
-      <section className="relative pt-32 pb-20 px-6 w-full max-w-7xl mx-auto flex flex-col-reverse md:flex-row items-center gap-12 md:gap-20">
+      <section className="relative overflow-hidden px-6 pb-16 pt-24 w-full max-w-7xl mx-auto flex flex-col-reverse md:flex-row items-center gap-12 md:gap-20 md:pb-20 md:pt-32">
+        <div className="pointer-events-none absolute -top-36 left-1/2 h-64 w-[130%] -translate-x-1/2 rounded-full bg-[#FFD700] opacity-20 blur-[80px] md:hidden" />
         
         {/* TEXT CONTENT */}
-        <div className="flex-1 text-center md:text-left z-10">
+        <div className="relative z-10 flex-1 text-center md:text-left">
           <div data-reveal style={revealDelay(120)} className="inline-flex items-center gap-2 bg-[#1A1A1A] border border-[#333] rounded-full px-4 py-1.5 mb-6">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -98,7 +99,7 @@ export default function LandingPage() {
         </div>
 
         {/* MASCOT VISUAL */}
-        <div data-reveal style={revealDelay(360)} className="flex-1 flex justify-center items-center relative z-10 w-full max-w-[500px] md:max-w-none mt-10 md:mt-0">
+        <div data-reveal style={revealDelay(360)} className="relative z-10 hidden w-full max-w-[500px] flex-1 items-center justify-center md:mt-0 md:flex md:max-w-none">
           <div className="relative w-full h-[400px] md:w-[600px] md:h-[600px] flex items-center justify-center">
              
              {/* The Mascot Component */}
