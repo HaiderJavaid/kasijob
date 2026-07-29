@@ -1,8 +1,9 @@
 "use client";
 import { useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import Mascot from "../components/Mascot"; 
-import { ArrowRight, Briefcase, ChevronDown, Clock, MapPin, Search, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, Briefcase, ChevronDown, Clock, MapPin, Search, ShieldCheck } from "lucide-react";
 
 export default function LandingPage() {
   useEffect(() => {
@@ -90,11 +91,13 @@ export default function LandingPage() {
 
           <div data-reveal style={revealDelay(760)} className="mt-10 flex items-center justify-center md:justify-start gap-4 text-sm text-gray-500 font-medium">
             <div className="flex -space-x-3">
-               {[1,2,3,4].map(i => (
-                 <div key={i} className={`w-9 h-9 rounded-full border-2 border-[#0a0a0a] bg-gray-${i*100 + 400}`}></div>
-               ))}
+              {pioneerImages.map((src) => (
+                <div key={src} className="relative h-9 w-9 overflow-hidden rounded-full border-2 border-[#0a0a0a] bg-gray-700">
+                  <Image src={src} alt="KasiJobs pioneer" fill sizes="36px" className="object-cover" />
+                </div>
+              ))}
             </div>
-            <p>Trust by <span className="text-white font-bold">50+ Pioneers</span></p>
+            <p>Trusted by <span className="text-white font-bold">50+ Pioneers</span></p>
           </div>
         </div>
 
@@ -268,27 +271,21 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FeatureCard
               delay={140}
-              icon={<Zap size={32} />}
+              image="/landing/feature-fast-gigs.png"
               title="Fast Gigs"
               desc="Pick up short paid jobs you can finish quickly, from simple admin work to on-demand local help."
-              color="text-yellow-400"
-              bg="bg-yellow-400/10"
             />
             <FeatureCard
               delay={300}
-              icon={<Briefcase size={32} />}
+              image="/landing/feature-client-projects.png"
               title="Client Projects"
               desc="Win design, writing, marketing, and operations work that pays more for proven freelance skills."
-              color="text-blue-400"
-              bg="bg-blue-400/10"
             />
             <FeatureCard
               delay={460}
-              icon={<ShieldCheck size={32} />}
+              image="/landing/feature-clear-payouts.png"
               title="Clear Payouts"
               desc="Know when you get paid. KasiJobs clears approved earnings on the 5th with a simple payout cycle."
-              color="text-green-400"
-              bg="bg-green-400/10"
             />
           </div>
         </div>
@@ -356,6 +353,7 @@ export default function LandingPage() {
 
 const previewJobs = [
   {
+    image: "/landing/job-poster-design.png",
     category: "Design",
     title: "Poster for weekend promo",
     description: "Create a clean social poster and story version for a local food stall campaign.",
@@ -363,6 +361,7 @@ const previewJobs = [
     location: "Remote",
   },
   {
+    image: "/landing/job-event-crew.png",
     category: "Local help",
     title: "Event crew for pop-up booth",
     description: "Help set up, greet visitors, and pack down a small booth at a community market.",
@@ -370,6 +369,7 @@ const previewJobs = [
     location: "On-site",
   },
   {
+    image: "/landing/job-product-copy.png",
     category: "Writing",
     title: "Product captions in Malay",
     description: "Write short, friendly captions for ten marketplace products with clear benefits.",
@@ -385,6 +385,11 @@ const previewJobs = [
   },
 ];
 
+const pioneerImages = [
+  "/landing/pioneer-1.png",
+  "/landing/pioneer-2.png",
+];
+
 const previewStats = [
   { label: "Open jobs", value: "32" },
   { label: "Today's payout", value: "Paid Today RM2,652" },
@@ -397,27 +402,29 @@ function revealDelay(delay) {
 
 function JobPreviewCard({ job, delay = 0 }) {
   return (
-    <div data-reveal style={revealDelay(delay)} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#111] text-[#FFD700]">
+    <div data-reveal style={revealDelay(delay)} className="rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-sm md:text-left">
+      <div className="relative flex flex-col items-center gap-3 md:flex-row md:items-start">
+        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#111] text-[#FFD700]">
+          {job.image ? (
+            <Image src={job.image} alt="" fill sizes="64px" className="object-cover" />
+          ) : (
             <Briefcase size={22} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">
-              {job.category}
-            </p>
-            <h3 className="mt-1 text-lg font-black leading-tight text-[#111]">
-              {job.title}
-            </h3>
-          </div>
+          )}
         </div>
-        <ArrowRight size={18} className="mt-1 shrink-0 text-gray-300" />
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">
+            {job.category}
+          </p>
+          <h3 className="mt-1 text-lg font-black leading-tight text-[#111]">
+            {job.title}
+          </h3>
+        </div>
+        <ArrowRight size={18} className="absolute right-0 top-1 hidden shrink-0 text-gray-300 md:block" />
       </div>
       <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-gray-500">
         {job.description}
       </p>
-      <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs font-bold text-gray-500 md:justify-start">
         <span className="rounded-full bg-gray-100 px-3 py-1 text-[#111]">{job.budget}</span>
         <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1">
           <MapPin size={12} />
@@ -432,11 +439,11 @@ function JobPreviewCard({ job, delay = 0 }) {
   );
 }
 
-function FeatureCard({ icon, title, desc, color, bg, delay }) {
+function FeatureCard({ image, title, desc, delay }) {
   return (
-    <div data-reveal style={revealDelay(delay)} className="bg-[#151515] p-8 rounded-3xl border border-white/5 hover:border-[#FFD700]/30 transition-all hover:-translate-y-2 group">
-      <div className={`w-16 h-16 ${bg} rounded-2xl flex items-center justify-center ${color} mb-6 group-hover:scale-110 transition-transform`}>
-        {icon}
+    <div data-reveal style={revealDelay(delay)} className="group rounded-3xl border border-white/5 bg-[#151515] p-8 text-center transition-all hover:-translate-y-2 hover:border-[#FFD700]/30 md:text-left">
+      <div className="relative mx-auto mb-6 h-24 w-24 overflow-hidden rounded-2xl transition-transform group-hover:scale-105 md:mx-0">
+        <Image src={image} alt="" fill sizes="96px" className="object-cover" />
       </div>
       <h3 className="text-2xl font-bold mb-3 text-white">{title}</h3>
       <p className="text-gray-400 leading-relaxed text-base">{desc}</p>
