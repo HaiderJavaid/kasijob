@@ -1,14 +1,33 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import Mascot from "../components/Mascot"; 
 import { ArrowRight, Briefcase, ChevronDown, Clock, MapPin, Search, ShieldCheck, Zap } from "lucide-react";
 
 export default function LandingPage() {
+  useEffect(() => {
+    const revealItems = document.querySelectorAll("[data-reveal]");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { rootMargin: "0px 0px -8%", threshold: 0.12 },
+    );
+
+    revealItems.forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen w-full bg-[#0a0a0a] text-white font-sans overflow-x-hidden selection:bg-[#FFD700] selection:text-black">
       
       {/* --- NAVBAR --- */}
-      <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-lg bg-black/20 border-b border-white/5">
+      <nav data-reveal style={revealDelay(0)} className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-lg bg-black/20 border-b border-white/5">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 bg-[#FFD700] rounded-xl flex items-center justify-center text-black font-black text-lg shadow-[0_0_15px_#FFD700]">
             K
@@ -33,7 +52,7 @@ export default function LandingPage() {
         
         {/* TEXT CONTENT */}
         <div className="flex-1 text-center md:text-left z-10">
-          <div className="inline-flex items-center gap-2 bg-[#1A1A1A] border border-[#333] rounded-full px-4 py-1.5 mb-6">
+          <div data-reveal style={revealDelay(120)} className="inline-flex items-center gap-2 bg-[#1A1A1A] border border-[#333] rounded-full px-4 py-1.5 mb-6">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -41,19 +60,19 @@ export default function LandingPage() {
             <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">Malaysia&apos;s #1 Gig Platform</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-black leading-[1.1] mb-6 tracking-tight">
+          <h1 data-reveal style={revealDelay(280)} className="text-5xl md:text-7xl font-black leading-[1.1] mb-6 tracking-tight">
             Real Work. <br/>
             <span className="text-[#FFD700] drop-shadow-[0_0_25px_rgba(255,215,0,0.3)]">
               Real Payday.
             </span>
           </h1>
           
-          <p className="text-gray-400 text-lg md:text-xl mb-8 max-w-lg mx-auto md:mx-0 leading-relaxed">
+          <p data-reveal style={revealDelay(440)} className="text-gray-400 text-lg md:text-xl mb-8 max-w-lg mx-auto md:mx-0 leading-relaxed">
             A gigs and freelance marketplace for flexible paid work. Take on local jobs, remote projects, or creative client work.
             <br/><span className="text-white font-bold">We clear your balance on the 5th. Guaranteed.</span>
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+          <div data-reveal style={revealDelay(600)} className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
             <Link 
               href="/register" 
               className="bg-[#FFD700] text-black font-black text-lg px-8 py-4 rounded-2xl hover:bg-[#E5C100] transition-all flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(255,215,0,0.2)] hover:translate-y-[-2px]"
@@ -68,7 +87,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div className="mt-10 flex items-center justify-center md:justify-start gap-4 text-sm text-gray-500 font-medium">
+          <div data-reveal style={revealDelay(760)} className="mt-10 flex items-center justify-center md:justify-start gap-4 text-sm text-gray-500 font-medium">
             <div className="flex -space-x-3">
                {[1,2,3,4].map(i => (
                  <div key={i} className={`w-9 h-9 rounded-full border-2 border-[#0a0a0a] bg-gray-${i*100 + 400}`}></div>
@@ -79,7 +98,7 @@ export default function LandingPage() {
         </div>
 
         {/* MASCOT VISUAL */}
-        <div className="flex-1 flex justify-center items-center relative z-10 w-full max-w-[500px] md:max-w-none mt-10 md:mt-0">
+        <div data-reveal style={revealDelay(360)} className="flex-1 flex justify-center items-center relative z-10 w-full max-w-[500px] md:max-w-none mt-10 md:mt-0">
           <div className="relative w-full h-[400px] md:w-[600px] md:h-[600px] flex items-center justify-center">
              
              {/* The Mascot Component */}
@@ -120,16 +139,16 @@ export default function LandingPage() {
         <div className="mx-auto hidden max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#101010] shadow-[0_30px_100px_rgba(0,0,0,0.45)] md:block">
           <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
             <div className="border-b border-white/10 p-8 md:p-10 lg:border-b-0 lg:border-r">
-              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFD700] text-black">
+              <div data-reveal style={revealDelay(0)} className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFD700] text-black">
                 <Briefcase size={24} strokeWidth={3} />
               </div>
-              <h2 className="text-3xl font-black leading-tight text-white md:text-5xl">
+              <h2 data-reveal style={revealDelay(140)} className="text-3xl font-black leading-tight text-white md:text-5xl">
                 Peek inside the jobs board.
               </h2>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-gray-400 md:text-lg">
+              <p data-reveal style={revealDelay(280)} className="mt-5 max-w-2xl text-base leading-relaxed text-gray-400 md:text-lg">
                 Browse small paid jobs, see budgets, and register interest once you join KasiJobs.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div data-reveal style={revealDelay(420)} className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/register"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FFD700] px-6 py-4 text-sm font-black text-black transition hover:bg-[#E5C100] active:scale-95"
@@ -146,7 +165,7 @@ export default function LandingPage() {
             </div>
 
             <div className="relative min-h-[620px] bg-[#f3f4f6] p-4 text-[#111] sm:p-6 md:p-8">
-              <div className="rounded-[1.5rem] bg-[#111] px-5 py-6 text-white shadow-xl">
+              <div data-reveal style={revealDelay(120)} className="rounded-[1.5rem] bg-[#111] px-5 py-6 text-white shadow-xl">
                 <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-xs font-black uppercase tracking-wide text-[#FFD700]">
@@ -160,8 +179,8 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {previewStats.map((stat) => (
-                    <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  {previewStats.map((stat, index) => (
+                    <div data-reveal style={revealDelay(260 + index * 120)} key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                       <p className="text-[11px] font-black uppercase tracking-wide text-gray-400">{stat.label}</p>
                       <p className="mt-2 text-xl font-black">{stat.value}</p>
                     </div>
@@ -170,13 +189,13 @@ export default function LandingPage() {
               </div>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {previewJobs.map((job) => (
-                  <JobPreviewCard key={job.title} job={job} />
+                {previewJobs.map((job, index) => (
+                  <JobPreviewCard key={job.title} job={job} delay={420 + index * 140} />
                 ))}
               </div>
 
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#f3f4f6] via-[#f3f4f6]/95 to-transparent"></div>
-              <div className="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-xl rounded-2xl border border-white/20 bg-black/80 p-5 text-center text-white shadow-2xl backdrop-blur-md sm:inset-x-8">
+              <div data-reveal style={revealDelay(900)} className="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-xl rounded-2xl border border-white/20 bg-black/80 p-5 text-center text-white shadow-2xl backdrop-blur-md sm:inset-x-8">
                 <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFD700] text-black">
                   <ShieldCheck size={18} />
                 </div>
@@ -191,12 +210,12 @@ export default function LandingPage() {
 
         <div className="mx-auto max-w-[26rem] md:hidden">
           <div className="relative bg-[#0a0a0a] px-1 pb-20 text-white">
-            <div className="inline-flex w-full items-center gap-3 rounded-xl bg-white/10 px-4 py-4 text-sm font-bold text-gray-300">
+            <div data-reveal style={revealDelay(0)} className="inline-flex w-full items-center gap-3 rounded-xl bg-white/10 px-4 py-4 text-sm font-bold text-gray-300">
               <Search size={16} />
               <span className="flex-1">Search gigs</span>
             </div>
 
-            <details className="group mt-4">
+            <details data-reveal style={revealDelay(140)} className="group mt-4">
               <summary className="list-none cursor-pointer">
                 <div className="inline-flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-bold text-gray-300">
                   <Briefcase size={16} />
@@ -216,12 +235,12 @@ export default function LandingPage() {
             </details>
 
             <div className="relative mt-4 space-y-4 overflow-hidden pb-40">
-              {previewJobs.slice(0, 3).map((job) => (
-                <JobPreviewCard key={job.title} job={job} />
+              {previewJobs.slice(0, 3).map((job, index) => (
+                <JobPreviewCard key={job.title} job={job} delay={280 + index * 140} />
               ))}
 
               <div className="pointer-events-none absolute inset-x-0 bottom-24 h-36 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 rounded-2xl border border-white/20 bg-black/80 p-5 text-center text-white backdrop-blur-md">
+              <div data-reveal style={revealDelay(760)} className="absolute inset-x-0 bottom-0 rounded-2xl border border-white/20 bg-black/80 p-5 text-center text-white backdrop-blur-md">
                 <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFD700] text-black">
                   <ShieldCheck size={18} />
                 </div>
@@ -238,7 +257,7 @@ export default function LandingPage() {
       {/* --- FEATURES SECTION --- */}
       <section className="py-24 px-6 bg-[#0f0f0f] border-t border-white/5">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div data-reveal style={revealDelay(0)} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-black mb-6">Built for <span className="text-[#FFD700]">Freelance Work</span></h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg">
               KasiJobs helps people earn through real gigs, recurring client work, and practical local services.
@@ -246,21 +265,24 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <FeatureCard 
+            <FeatureCard
+              delay={140}
               icon={<Zap size={32} />}
               title="Fast Gigs"
               desc="Pick up short paid jobs you can finish quickly, from simple admin work to on-demand local help."
               color="text-yellow-400"
               bg="bg-yellow-400/10"
             />
-            <FeatureCard 
+            <FeatureCard
+              delay={300}
               icon={<Briefcase size={32} />}
               title="Client Projects"
               desc="Win design, writing, marketing, and operations work that pays more for proven freelance skills."
               color="text-blue-400"
               bg="bg-blue-400/10"
             />
-            <FeatureCard 
+            <FeatureCard
+              delay={460}
               icon={<ShieldCheck size={32} />}
               title="Clear Payouts"
               desc="Know when you get paid. KasiJobs clears approved earnings on the 5th with a simple payout cycle."
@@ -273,15 +295,17 @@ export default function LandingPage() {
 
       {/* --- CTA SECTION --- */}
       <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto bg-gradient-to-r from-[#FFD700] to-[#FDB931] rounded-[2.5rem] p-10 md:p-20 text-center relative overflow-hidden">
+        <div data-reveal style={revealDelay(0)} className="max-w-5xl mx-auto bg-gradient-to-r from-[#FFD700] to-[#FDB931] rounded-[2.5rem] p-10 md:p-20 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
           
           <div className="relative z-10">
-            <h2 className="text-black text-4xl md:text-6xl font-black mb-6">Ready to get paid?</h2>
-            <p className="text-black/80 text-xl font-medium mb-8 max-w-lg mx-auto">
+            <h2 data-reveal style={revealDelay(160)} className="text-black text-4xl md:text-6xl font-black mb-6">Ready to get paid?</h2>
+            <p data-reveal style={revealDelay(320)} className="text-black/80 text-xl font-medium mb-8 max-w-lg mx-auto">
               Join the community of Malaysians turning their free time into a secondary income.
             </p>
-            <Link 
+            <Link
+              data-reveal
+              style={revealDelay(480)}
               href="/register" 
               className="inline-flex bg-black text-white font-black text-lg px-10 py-5 rounded-2xl hover:scale-105 transition-transform items-center gap-3"
             >
@@ -291,18 +315,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="py-10 text-center text-gray-700 text-sm">
+      <footer data-reveal style={revealDelay(0)} className="py-10 text-center text-gray-700 text-sm">
         <p>&copy; 2025 KasiJobs. Built for the hustlers.</p>
       </footer>
 
       <section className="py-20 px-6 bg-[#0a0a0a]">
         <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-black text-center mb-12">Frequently Asked <span className="text-[#FFD700]">Questions</span></h2>
+            <h2 data-reveal style={revealDelay(0)} className="text-3xl font-black text-center mb-12">Frequently Asked <span className="text-[#FFD700]">Questions</span></h2>
             <div className="space-y-4">
-                <FaqItem q="Is KasiJobs free to join?" a="Yes! It is 100% free. We never ask for payment to start working." />
-                <FaqItem q="When do I get paid?" a="We process all withdrawals on the 5th of every month directly to your bank or TNG eWallet." />
-                <FaqItem q="Can I work from home?" a="Absolutely. All tasks are digital and can be done from your phone anywhere." />
-                <FaqItem q="How much can I earn?" a="It depends on your effort. Some users earn RM50/month, others earn RM500+ by doing gig work." />
+                <FaqItem delay={140} q="Is KasiJobs free to join?" a="Yes! It is 100% free. We never ask for payment to start working." />
+                <FaqItem delay={280} q="When do I get paid?" a="We process all withdrawals on the 5th of every month directly to your bank or TNG eWallet." />
+                <FaqItem delay={420} q="Can I work from home?" a="Absolutely. All tasks are digital and can be done from your phone anywhere." />
+                <FaqItem delay={560} q="How much can I earn?" a="It depends on your effort. Some users earn RM50/month, others earn RM500+ by doing gig work." />
             </div>
         </div>
       </section>
@@ -310,17 +334,17 @@ export default function LandingPage() {
       {/* --- CONTACT & ABOUT (New) --- */}
       <section className="py-20 px-6 bg-[#111] border-t border-white/5 text-center">
         <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-4">About KasiJobs</h2>
-            <p className="text-gray-400 mb-8 leading-relaxed">
+            <h2 data-reveal style={revealDelay(0)} className="text-2xl font-bold text-white mb-4">About KasiJobs</h2>
+            <p data-reveal style={revealDelay(140)} className="text-gray-400 mb-8 leading-relaxed">
                 Founded in Malaysia, we aim to connect businesses with real people for authentic engagement. 
                 We believe in fair pay for digital work.
             </p>
-            <div className="flex justify-center gap-6">
+            <div data-reveal style={revealDelay(280)} className="flex justify-center gap-6">
                 <Link href="#" className="text-gray-400 hover:text-[#FFD700]">Contact Support</Link>
                 <Link href="#" className="text-gray-400 hover:text-[#FFD700]">Privacy Policy</Link>
                 <Link href="#" className="text-gray-400 hover:text-[#FFD700]">Terms of Service</Link>
             </div>
-            <p className="text-gray-600 text-sm mt-12">&copy; 2025 KasiJobs Malaysia.</p>
+            <p data-reveal style={revealDelay(420)} className="text-gray-600 text-sm mt-12">&copy; 2025 KasiJobs Malaysia.</p>
         </div>
       </section>
 
@@ -366,9 +390,13 @@ const previewStats = [
   { label: "Total Users", value: "157" },
 ];
 
-function JobPreviewCard({ job }) {
+function revealDelay(delay) {
+  return { "--reveal-delay": `${delay}ms` };
+}
+
+function JobPreviewCard({ job, delay = 0 }) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+    <div data-reveal style={revealDelay(delay)} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#111] text-[#FFD700]">
@@ -403,9 +431,9 @@ function JobPreviewCard({ job }) {
   );
 }
 
-function FeatureCard({ icon, title, desc, color, bg }) {
+function FeatureCard({ icon, title, desc, color, bg, delay }) {
   return (
-    <div className="bg-[#151515] p-8 rounded-3xl border border-white/5 hover:border-[#FFD700]/30 transition-all hover:-translate-y-2 group">
+    <div data-reveal style={revealDelay(delay)} className="bg-[#151515] p-8 rounded-3xl border border-white/5 hover:border-[#FFD700]/30 transition-all hover:-translate-y-2 group">
       <div className={`w-16 h-16 ${bg} rounded-2xl flex items-center justify-center ${color} mb-6 group-hover:scale-110 transition-transform`}>
         {icon}
       </div>
@@ -415,9 +443,9 @@ function FeatureCard({ icon, title, desc, color, bg }) {
   );
 }
 
-function FaqItem({ q, a }) {
+function FaqItem({ q, a, delay }) {
   return (
-    <div className="bg-[#151515] p-6 rounded-2xl border border-white/5 hover:border-[#FFD700]/20 transition">
+    <div data-reveal style={revealDelay(delay)} className="bg-[#151515] p-6 rounded-2xl border border-white/5 hover:border-[#FFD700]/20 transition">
         <h3 className="font-bold text-white mb-2">{q}</h3>
         <p className="text-gray-400 text-sm">{a}</p>
     </div>
